@@ -1,0 +1,23 @@
+{
+  "name": "jeeves",
+  "version": "0.0.0",
+  "description": "Selenium RemoteWebDriver abstraction layer built on the 'wd' npm module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.docusignhq.com/martini/jeeves"
+  },
+  "keywords": [
+    "wd",
+    "webdriver",
+    "driverwrapper",
+    "jeeves",
+    "selenium",
+    "coffeescript"
+  ],
+  "author": "Whoaa512",
+  "license": "MIT"
+}
