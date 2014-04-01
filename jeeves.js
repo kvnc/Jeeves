@@ -1,362 +1,76 @@
 ###
-#  Jeeves - wd Webdriver Wrapper
+#  Jeeves
 #  Selenium RemoteWebDriver abstraction layer using the 'wd' npm pkg
 ###
-webdriver = require 'wd' # @todo: decouple from wd
-winston = require 'winston' # @todo: make it logger agnostic
+
+webdriver = require 'wd'
+asserters = webdriver.asserters
+winston = require 'winston'
 async = require 'async'
 _ = require 'lodash'
 
-###
-  @todo: Clarify @myDriver / @driver in docs. Should always go through @myDriver
-###
+# in ms
+SHORT_TIMEOUT = 8000
+LONG_TIMEOUT = 16000
+SHORT_INTERVAL = 200
+LONG_INTERVAL = 500
 
-# @todo: Before open-sourcing, need clean way to choose
-#        CB-style/Promise/PromiseChain webdriver
+# @todo: need clean way to choose either
+#        CB-style, promise, or promise-chain depending which `wd` is used
+#        Maybe not? if we just use promise-chain `wd` behind the scenes
 
-module.exports = class DriverWrapper
+module.exports = class Jeeves
 
   SPECIAL_KEYS: webdriver.SPECIAL_KEYS
 
-  constructor: (@driver, options) ->
-    @screensRootDir = options.screensRootDir
+  MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
 
-    @_init()
+  constructor: (@driver, options = {}) ->
+    @_screenshotDir = options.screenshotDir ? "#{process.cwd()}/test-results/screenshots"
 
-  _init: ->
-    ######################################
-    ## Adding all do__X__ByCss... , do__X__ById... functions
-    ######################################
+  ###
+  #   Extension to `async.series`, run a named series flow (key:fn style)
+  #   with optional `beforeEach()` & `afterEach()` callbacks,
+  #   each being passed (name, fn).
+  #   useful for logging async flows in tests.
+  #   @todo: move to jeeves utils
+  ###
+  namedSteps: (tasks, doneCallback, beforeEach, afterEach) ->
+    if _.isArray(tasks)
+      throw new Error "asyncSeriesTap only works with a named stack"
+    beforeEach ?= (fnName)-> winston.test "-- #{fnName}"
 
-    _.each @_elementFuncTypes, (type) =>
+    for taskName, taskFn of tasks
+      do (taskName, taskFn) ->
+        tasks[taskName] = (next) ->
+          beforeEach? taskName, taskFn
 
-      ######################################
-      ##    Find Methods
-      ######################################
+          # need to pass through error & any other params, so results still work
+          taskFn (args...) ->
+            afterEach? taskName, taskFn
+            next.apply @, args
 
-      # Single Find
-      @['getElement' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@getElement#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @driver["element#{@_elFuncSuffix type}"](selectorValue)
-          .nodeify (error, elem) ->
-            winston.test "got the elem: #{elem}"
-            done error, elem
-
-      # Find single Elem IfExists
-      @["element" + @_elFuncSuffix type + "IfExists"] = (selectorValue, done) =>
-        winston.test "@#{"element#{@_elFuncSuffix type}IfExists"} using selectorValue: #{selectorValue}"
-        @driver["element#{@_elFuncSuffix type}IfExists"](selectorValue)
-          .nodeify (error, elem) ->
-            winston.test "got the elem: #{elem}"
-            done error, elem
-
-      # Multi Find
-      @["getElements" + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@getElements#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @driver["elements#{@_elFuncSuffix type}"](selectorValue)
-          .nodeify (error, elems) ->
-            winston.test "got the elems: #{elems}"
-            done error, elems
-
-      # Find ElemOrNull
-      @["findEelementOrNull" + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@findElementOrNull#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @driver["element#{@_elFuncSuffix type}OrNull"](selectorValue)
-          .nodeify (error, elem) ->
-            winston.test "got the elem?: #{elem}"
-            done error, elem
-
-      ######################################
-      ##    Interaction Methods
-      ######################################
-
-      @['clickElement' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@clickElement#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to click..."
-          elem
-            .click()
-            .nodeify(done)
-
-      @['submit' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@submit#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to submit form..."
-          elem
-            .submit()
-            .nodeify(done)
-
-      @['sendTextToElement' + @_elFuncSuffix type] = (selectorValue, text, done) =>
-        winston.test "@sendTextToElement#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to type: #{text}"
-          elem
-            .sendKeys(text)
-            .nodeify(done)
-
-      @['clearAndSendText' + @_elFuncSuffix type] = (selectorValue, text, done) =>
-        winston.test "@clearAndSendText#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to clear..."
-          elem
-            .clear()
-            .then ->
-              winston.test "Element cleared! Attempting to type: #{text}"
-            .type(text)
-            .nodeify(done)
-
-      # Move to element, xoffset and y offset are optional.
-      @['mouseToElement' + @_elFuncSuffix type] = (selectorValue, xOffset = 0, yOffset = 0, done) =>
-        winston.test "@mouseToElement#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to move mouse to element...offset( x: #{xOffset}, y: #{yOffset} )"
-          elem
-            .moveTo(xOffset, yOffset)
-            .nodeify(done)
-
-      # Double-clicks at current mouse position using an elem found by selectorValue
-      @['doubleClickElement' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@clickElement#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["mouseToElement#{@_elFuncSuffix type}"] selectorValue, (error) =>
-          if error then return done error
-          winston.test "Mouse in position! Attempting to double-click..."
-          @driver
-            .doubleclick()
-            .nodeify(done)
-
-      # Send mouseDown then mouseUp to wdElementObject found w/ selectorValue
-      @['mouseDownUp' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@mouseDownUp#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["mouseToElement#{@_elFuncSuffix type}"] selectorValue, 0, 0, (error, elem) =>
-          if error then return done error
-          winston.test "Mouse in position! Attempting to mouseDown then mouseUp using left mouse button..."
-          @driver
-            .buttonDown(0)
-            .buttonUp(0)
-            .nodeify(done)
-
-      @['mouseClick' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@mouseClick#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["mouseToElement#{@_elFuncSuffix type}"] selectorValue, 0, 0, (error, elem) =>
-          if error then return done error
-          winston.test "Mouse in position! Attempting to click using left mouse button..."
-          @driver
-            .click(0)
-            .nodeify(done)
-
-      ######################################
-      ##    Check Methods
-      ######################################
-
-      @['isVisible' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@isVisible#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if not elem and error?.message.match /Error response status: 7/
-            winston.test 'Element not found'
-            return done null, false
-          else if error then return done error
-          winston.test "Element found! Attempting to check if visible..."
-          elem
-            .isVisible()
-            .nodeify (error, visible) ->
-              winston.test "isVisible result: #{visible}"
-              done error, visible
-
-      @['isSelected' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@isSelected#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to check if selected..."
-          elem
-            .isSelected()
-            .nodeify (error, selected) ->
-              winston.test "isSelected result: #{selected}"
-              done error, selected
-
-      @['isEnabled' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@isEnabled#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to check if enabled..."
-          elem
-            .isEnabled()
-            .nodeify (error, enabled) ->
-              winston.test "isEnabled result: #{enabled}"
-              done error, enabled
-
-      @['isDisplayed' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@isDisplayed#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if not elem and error?.message.match /Error response status: 7/
-            winston.test 'Element not found'
-            return done null, false
-          else if error then return done error
-          winston.test "Element found! Attempting to check if displayed..."
-          elem
-            .isDisplayed()
-            .nodeify (error, displayed) ->
-              winston.test "isDisplayed result: #{displayed}"
-              done error, displayed
-
-      @['isChecked' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@isChecked#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) =>
-          if error then return done error
-          winston.test "Element found! Attempting to check if checked..."
-          @getAttributeValue elem, 'checked', (error, checked) ->
-            winston.test "isChecked result: #{!!checked}"
-            done error, !!checked
-
-      @['isTextPresent' + @_elFuncSuffix type] = (selectorValue, searchText, done) =>
-        winston.test "@isTextPresent#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to check for text: #{searchText}"
-          elem
-            .textPresent(searchText)
-            .nodeify (error, textFound) ->
-              winston.test "Text found: #{textFound}"
-              done error, textFound
-
-      # Sugar for Existence Checks
-      @['checkForElement' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@checkForElement#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @driver["hasElement#{@_elFuncSuffix type}"](selectorValue)
-          .nodeify (error, exists) =>
-            winston.test "@checkForElement#{@_elFuncSuffix type} result: #{exists}"
-            done error, exists
-
-      ######################################
-      ##    Getter Methods
-      ######################################
-
-      @['getText' + @_elFuncSuffix type] = (selectorValue, opts..., done) =>
-        winston.test "@getText#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        callCount = opts.shift() or 1
-        # @todo: Write tests for this to check if is this error check
-        #        still needed
-        if callCount > 2
-          return done new Error "getText() is in a loop of Error response status: 10"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) =>
-          if error then return done error
-          winston.test "Element found! Attempting to get text..."
-          elem
-            .text()
-            .nodeify (error, innerText) =>
-              if error?.message.match /Error response status: 10/
-                @["getText#{@_elFuncSuffix type}"] selectorValue, callCount+1, done
-              else done error, innerText
-
-      @['getAttributeValue' + @_elFuncSuffix type] = (selectorValue, attrName, done) =>
-        winston.test "@getAttributeValue#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to get attribute(#{attrName})..."
-          elem
-            .getAttribute(attrName)
-            .nodeify (error, attrVal) ->
-              winston.test "got attribute value: #{attrVal}"
-              done error, attrVal
-
-      @['getComputedCssProp' + @_elFuncSuffix type] = (selectorValue, cssProp, done) =>
-        winston.test "@getComputedCssProp#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to get computed css prop(#{cssProp})..."
-          elem
-            .getComputedCss(cssProp)
-            .nodeify (error, cssPropVal) ->
-              winston.test "got computed css property: #{cssPropVal}"
-              done error, cssPropVal
-
-      @['getSize' + @_elFuncSuffix type] = (value, done) =>
-        winston.test "@getSize#{@_elFuncSuffix type} using #{value}"
-        @["getElement#{@_elFuncSuffix type}"] value, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to get elem size..."
-          elem
-            .getSize()
-            .nodeify (error, elemSize) ->
-              winston.test "got elem size: #{elemSize}"
-              done error, elemSize
-
-      @['getElemLocation' + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@getElemLocation#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["getElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) ->
-          if error then return done error
-          winston.test "Element found! Attempting to get location..."
-          elem
-            .getElementLocation()
-            .nodeify (error, elemLoc) ->
-              winston.test "got elem location: #{elemLoc}"
-              done error, elemLoc
-
-      ######################################
-      ##    Wait For Methods
-      ######################################
-
-      ###
-      #  WaitFor__X__By...
-      #  @timeout: default 5 sec
-      ###
-      @["waitForElement" + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@#{"waitForElement" + @_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        timeout = 5000
-        @driver["waitForElement#{@_elFuncSuffix type}"](selectorValue, @driver.isVisible, timeout)
-          .nodeify (error) ->
-            winston.test "Waiting complete! Element is visible"
-            done error
-
-      @["waitForAndGetElement" + @_elFuncSuffix type] = (selectorValue, done) =>
-        winston.test "@#{"waitForElement" + @_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        timeout = 5000
-        @driver["waitForElement#{@_elFuncSuffix type}"](selectorValue, @driver.isVisible, timeout)
-          .nodeify (error) =>
-            winston.test "Waiting complete! Attempting to get & return element..."
-            @["getElement#{@_elFuncSuffix type}"] selectorValue, done
-
-      @['waitForText' + @_elFuncSuffix type] = (selectorValue, text, done) =>
-        winston.test "@waitForText#{@_elFuncSuffix type} using selectorValue: #{selectorValue}"
-        @["waitForAndGetElement#{@_elFuncSuffix type}"] selectorValue, (error, elem) =>
-          if error then return callback error
-          winston.test "Element found! Attempting to check text for #{text}..."
-          elem
-            .textPresent(text)
-            .nodeify (error, present) =>
-              winston.test "text present? => #{present}"
-              done error, present
+    async.series tasks, doneCallback
 
 
-  ######################################
-  ## Browser-level & Utility methods
-  ######################################
-
-  # convert to type to something like ById, ByCssSelector, etc...
-  _elFuncSuffix: (type) ->
-    res = (" by " + type).replace /(\s[a-z])/g, ($1) ->
-      $1.toUpperCase().replace " ", ""
-    res.replace "Xpath", "XPath"
-
-  _elementFuncTypes: ['class name','css selector','id','name','link text','partial link text','tag name','xpath','css']
+  #####################################
+  #   Browser-level Utility Methods
+  #####################################
 
   getBrowser: (done) ->
     winston.test '@getBrowser'
     @driver.getCurrentBrowser done
 
-  shortWait: (seconds, done) ->
-    winston.test '@shortWait', seconds
+  explicitWait: (seconds, done) ->
+    winston.test '@explicitWait', seconds
     setTimeout done, 1000 * seconds
 
   stopBrowser: (done) ->
     winston.test '@stopBrowser'
     clientScript = ->
-      window.stop.call @
-    @executeClientScript clientScript, (error) =>
+      window.stop?()
+      document.execCommand? "Stop", false
+    @executeClientScript clientScript, (error) ->
       winston.error 'Stopping browser failed', error if error
       done()
 
@@ -364,38 +78,58 @@ module.exports = class DriverWrapper
     winston.test '@loadPage', url
 
     unless url?.length and !!url.toLowerCase().match(/^http/)
-      return done new Error "Need full URL to loadPage", url
+      return done new Error "Need full URL to loadPage, but got #{url}"
 
-    winston.test "Stopping browser before loading page."
+    winston.test 'Stopping browser before loading page.'
     @stopBrowser (error) =>
       if error
         error.message = "Error stopping browser: #{error.message}"
         return done error
+
+      winston.test "Browser is stopped. Attempting to load url: #{url}"
+
       @driver
         .get(url)
         .nodeify (error) =>
-          winston.test "Loaded #{url}?", error or true
+          winston.test "Tried to load #{url}", error or 'no error'
           done error
+
+  loadPageAndWait: (url, done)->
+    winston.test '@loadPageAndWait', url
+    @loadPage url, (error)=>
+      if error
+        winston.error "Error loading page: #{error.message ? error}"
+        return done error
+      # waiting for exact URL requested. so won't handle redirects.
+      @waitForUrlToChange url, true, (error, actualUrl)=>
+        winston.test '@loadPageAndWait got', (if error then "Error: #{error.message}" else actualUrl)
+        done error, actualUrl
 
   getCurrentUrl: (done) ->
     winston.test '@getCurrentUrl'
     @driver
       .url()
       .nodeify (error, url) ->
-        if error then return done error
-        winston.test "-- current url is", url
-        done null, url
+        winston.test "-- current url is #{url}"
+        done error, url
 
-  reloadPage: (done) ->
-    winston.test '@reloadPage'
-    @getCurrentUrl (error, url) =>
-      if error then return done error
-      # check if it says that it's still saving
-      @getTextById 'status-global', (error, status) =>
-        if error then return done error
-        # should it force itself to wait using waitTillDoneSaving()?
-        if status then winston.warn '    --- the app isnt done yet, but reloading page anyhow', status
-        @loadPage url, done
+  navBack: (done) ->
+    winston.test '@navBack'
+    @driver
+      .back()
+      .nodeify(done)
+
+  navForward: (done) ->
+    winston.test '@navForward'
+    @driver
+      .forward()
+      .nodeify(done)
+
+  refreshPage: (done) ->
+    winston.test '@refreshPage'
+    @driver
+      .refresh()
+      .nodeify(done)
 
   getPageTitle: (done) ->
     winston.test '@getPageTitle'
@@ -406,25 +140,25 @@ module.exports = class DriverWrapper
         done error, title
 
   getWindowHandles: (done) ->
-    winston.test "@getWindowHandles"
+    winston.test '@getWindowHandles'
     @driver
       .windowHandles()
       .nodeify(done)
 
   getCurrentWindowHandle: (done) ->
-    winston.test "@getCurrentWindowHandle"
+    winston.test '@getCurrentWindowHandle'
     @driver
       .windowHandle()
       .nodeify(done)
 
   switchToWindow: (windowName, done) ->
-    winston.test "@switchToWindow named:", windowName
+    winston.test "@switchToWindow named: #{windowName}"
     @driver
       .window(windowName)
       .nodeify(done)
 
   ###
-  # Alert box management
+  #  JS alert box management
   ###
   acceptAlert: (done) ->
     winston.test '@acceptAlert'
@@ -438,16 +172,35 @@ module.exports = class DriverWrapper
       .dismissAlert()
       .nodeify(done)
 
-  ###
-  # Quit the browser
-  ###
+  getAlertText: (done) ->
+    winston.test '@getAlertText'
+    @driver
+      .alertText()
+      .nodeify(done)
+
+  sendAlertKeys: (keys, done) ->
+    winston.test "@sendAlertKeys #{keys}"
+    @driver
+      .alertKeys(keys)
+      .nodeify(done)
+
+  # Quit the browser and end the webdriver session
   quit: (done) ->
+    winston.test '@quit'
     @driver
       .quit()
       .nodeify(done)
 
-  # Take a screenshot, save it to a subdir of ../screenshots
-  # @todo: refactor this before open-sourcing driverWrapper
+  ###
+  # @done callback gets (error, source)
+  ###
+  getFullBody: (done) ->
+    winston.test '@getFullBody'
+    @driver
+      .source()
+      .nodeify(done)
+
+  # Take a screenshot, save it to a subdir of `@_screenshotDir`
   takeScreenshot: (subdir, filename, done) ->
     winston.test '@takeScreenshot'
     @driver
@@ -457,23 +210,23 @@ module.exports = class DriverWrapper
 
         ensureDir = require 'ensureDir'
         fs = require 'fs'
-        # @todo: expose this as passable options
-        directory = @screensRootDir # conf.testResultsFolder + 'screenshots/' + subdir + '/'
-        filePath = directory + filename + '.png'
+        directory = "#{@_screenshotDir}/#{subdir}"
+        filePath = "#{directory}/#{filename}.png"
 
         ensureDir directory, '0755', (error) ->
+          if error then return done error
           fs.writeFile filePath, imgBuffer, 'base64', (error) ->
             if error then done error
             else
-              winston.test "Saved screenshot to", filePath
+              winston.test "Saved screenshot to #{filePath}"
               done null, filePath
 
   ###
-  #  run a *SYNCHRONOUS* script on the client.
-  #  @param fn function to run in client scope.
+  #  *SYNCHRONOUSLY* run a script on the client.
+  #  @fn function to run in client scope.
   #    - fn should take same params as `params` here.
-  #  @param params... vars to pass to client scope.
-  #  @param done callback. gets results.
+  #  @params... vars to pass to client scope.
+  #  @done callback. gets results.
   #
   #  IMPT:
   #  - if `params` includes a hash w/ an inline function,
@@ -482,55 +235,95 @@ module.exports = class DriverWrapper
   #    if it's something huge it'll overload the callstack)
   ###
   executeClientScript: (fn, params..., done) ->
-    winston.test "@executeClientScript"
+    winston.test '@executeClientScript'
     @driver.execute fn, params, (error, results) =>
-      winston.debug "@executeClientScript results:", results, '\n'
-      done error, results
+      winston.debug "@executeClientScript results: #{JSON.stringify results}\n"
+      if error then done error
+      # treat returned 'error' string as an error.
+      else if _.isString(results) and /^error/i.test(results) then done new Error results
+      else done null, results
 
   ###
-  #  run an *ASYNCHRONOUS* script on the client.
-  #  same as executeClientScript, but `fn` needs to include a callback.
+  #  *ASYNCHRONOUSLY* run a script on the client.
+  #  same as executeClientScript, but `fn` needs to include a callback
+  #  and code execution will continue
   #    - order: fn(params..., callback)
   ###
   executeAsyncClientScript: (fn, params..., done) ->
-    winston.test "@executeAsyncClientScript"
+    winston.test '@executeAsyncClientScript'
     @driver.executeAsync fn, params, (error, results) =>
-      winston.debug "@executeAsyncClientScript results:", results
-      done error, results
+      winston.debug "@executeAsyncClientScript results: #{JSON.stringify results}\n"
+      if error then done error
+      # treat returned 'error' string as an error.
+      else if _.isString(results) and /^error/i.test(results) then done new Error results
+      else done null, results
 
-  ######################################
-  ## ~~End Browser-level & Utility methods
-  ######################################
+  # Webdriver Element Comparison
+  compareElements: (elem1, elem2, done) ->
+    winston.test '@compareElements'
+    @driver
+      .equalsElement(elem1, elem2)
+      .nodeify(done)
 
-  ######################################
-  ## Misc Helper Methods
-  ######################################
+  #####################################
+  #   /Browser-level Utility Methods
+  #####################################
 
-  ######################################
-  ##    Interaction Methods
-  ######################################
+
+  #####################################
+  #   Interaction Methods
+  #####################################
+
+  phantomUploadFile: (selector, filePath, done) ->
+    winston.test "@phantomUploadFile using: #{selector}\nFile: #{filePath}"
+    if @driver.phantomUploadFile?
+      @driver
+        .phantomUploadFile(selector, filePath)
+        .nodeify(done)
+    else done new Error 'Phantom file uploads are not supported by your version of WD.'
+
+  uploadFile: (filePath, done) ->
+    winston.test "@uploadFile #{filePath}"
+    @driver
+      .uploadFile(filePath)
+      .nodeify(done)
+
+  mouseClick: (button..., done) ->
+    # Buttons: 'left', 'middle', 'right'
+    key = button.shift() or 'left'
+    b = @MOUSE_KEYS[key]
+    winston.test "@mouseClick with button: #{key}"
+    @driver
+      .click(b)
+      .nodeify(done)
+
+  mouseDownUp: (button..., done) ->
+    # Buttons: 'left', 'middle', 'right'
+    key = button.shift() or 'left'
+    b = @MOUSE_KEYS[key]
+    winston.test "@mouseDownUp with button: #{key}"
+    @driver
+      .buttonDown(b)
+      .buttonUp(b)
+      .nodeify(done)
+
+  mouseMove: (x, y, done) ->
+    winston.test "@mouseMove to x:#{x}, y:#{y}"
+    @driver
+      .moveTo(null, x, y)
+      .nodeify(done)
 
   clearElement: (elem, done) ->
-    winston.test "@clearElement"
+    winston.test '@clearElement', elem
     elem
-      .clear()
+      .clear?()
       .nodeify(done)
 
   clickElement: (elem, done) =>
-    winston.test "@clickElement"
+    winston.test '@clickElement', elem
     elem
-      .click()
+      .click?()
       .nodeify(done)
-
-  selectOptionFromDropdown: (dropdownElemCss, optionCssSelector, done) ->
-    winston.test '@selectOptionFromDropdown', dropdownElemCss, optionCssSelector
-    @mouseClickByCss dropdownElemCss, (error) =>
-      if error then return done error
-      @shortWait .5, (error) =>
-        #screenshots seem to be the best way to do force the `select` to complete - add one before and after selecting
-        @takeScreenshot 'dropdown', 'before', (error) =>
-          @clickElementByCss optionCssSelector, (error) =>
-            @takeScreenshot 'dropdown', 'later', (error) => done error
 
   typeKeys: (keys, done) ->
     winston.test '@typeKeys', keys
@@ -538,101 +331,132 @@ module.exports = class DriverWrapper
       .keys(keys)
       .nodeify(done)
 
-  makeButtonVisible: (cssSelector, done) ->
-    winston.test '@makeButtonVisible', cssSelector
+  forceElementVisible: (cssSelector, done) ->
+    winston.test "@forceElementVisible #{cssSelector}"
     clientMakeVisible = (cssPath) ->
-      return $("#{cssPath}").show()
+      $(cssPath).show()
+      els = $(cssPath)
+      for el in els
+        el.style.visibility = 'visible'
+        el.style.height = '1px'
+        el.style.width = '1px'
+        el.style.opacity = 1
+      return
     @executeClientScript clientMakeVisible, cssSelector, done
 
-  ######################################
-  ##    Check Methods
-  ######################################
+  #####################################
+  #   /Interaction Methods
+  #####################################
+
+
+  #####################################
+  #   Check Methods
+  #####################################
+
+  hasClass: (elem, className, done)->
+    winston.test "@hasClass(#{elem}, #{className})"
+    elem
+      .getAttribute('class')
+      .nodeify (error, value) ->
+        if error then return done error
+        classes = value.split(' ')
+        winston.test "** classNames on #{elem}: #{classes}"
+        if className in classes
+          winston.warn 'elem has class!'
+          return done null, true
+        done null, false
 
   isChecked: (elem, done) ->
     winston.test '@isChecked'
-    @getAttributeValue elem, 'checked', (error, checked) -> done error, checked
+    @getAttributeValue elem, 'checked', done
+
+  isSelected: (elem, done) ->
+    winston.test '@isSelected'
+    elem
+      .isSelected?()
+      .nodeify(done)
 
   isDisplayed: (elem, done) ->
     winston.test '@isDisplayed'
     elem
-      .isDisplayed()
+      .isDisplayed?()
       .nodeify(done)
 
-  isVisible: (elem, done) ->
-    winston.test '@isVisible'
+  isTextPresent: (elem, searchText, done) ->
+    winston.test "@isTextPresent {elem: #{elem}, searchText: #{searchText}}"
     elem
-      .isVisible()
-      .nodeify(done)
+      .textPresent?(searchText)
+      .nodeify (error, textFound) ->
+        winston.test "Text found: #{textFound}"
+        done error, textFound
 
-  checkForErrorByCss: (cssSelector, expectedErrorMsg, done) ->
-    winston.test '@checkForErrorByCss', cssSelector
-    @isTextPresentByCss cssSelector, expectedErrorMsg, done
-
-  _pageHasProperElem: (elemCssPath, elemText, done) ->
-    winston.test "@_pageHasProperElem params:{elemCssPath: #{elemCssPath}, elemText: #{elemText}}"
-    async.series
-      checkForElementByCss: (next) => @checkForElementByCss elemCssPath, next
+  checkForElemWithProperText: (elemCssPath, elemText, done) ->
+    winston.test "@checkForElemWithProperText params:{elemCssPath: #{elemCssPath}, elemText: #{elemText}}"
+    elemExists = null
+    @namedSteps
+      checkForElementByCss: (next) =>
+        @checkForElementByCss elemCssPath, (error, _exists) =>
+          elemExists = _exists
+          next error, elemExists
       checkForTextByCss: (next) =>
-        if elemText? then @isTextPresentByCss elemCssPath, elemText, next
-        else next null, true
+        unless elemExists then next()
+        if elemText?
+          @isTextPresentByCss elemCssPath, elemText, next
     , (error, results) ->
-      winston.test "@_pageHasProperElem results:", results
-      if results.checkForElementByCss and results.checkForTextByCss then done null, true
-      else done error, false
+      winston.test '@checkForElemWithProperText results:', results
+      if _result = (results?.checkForElementByCss and results?.checkForTextByCss) then done null, _result
+      else done error, _result
+
+  #####################################
+  #   /Check Methods
+  #####################################
 
 
-
-  ######################################
-  ##    Getter Methods
-  ######################################
+  #####################################
+  #   Getter Methods
+  #####################################
 
   getActiveElement: (done) ->
-    winston.test "@getActiveElement"
+    winston.test '@getActiveElement'
     @driver
       .active()
       .nodeify(done)
 
   getAttributeValue: (elem, attrName, done) ->
-    winston.test "@getAttributeValue", attrName
+    winston.test "@getAttributeValue #{attrName}"
     elem
-      .getAttribute(attrName)
+      .getAttribute?(attrName)
       .nodeify(done)
 
   getElementLocation: (elem, done) ->
-    winston.test "@getElementLocation"
+    winston.test '@getElementLocation'
     elem
-      .getLocation()
+      .getLocation?()
       .nodeify(done)
 
   getComputedCss: (elem, cssProperty, done) ->
-    winston.test "@getComputedCss"
+    winston.test '@getComputedCss'
     elem
-      .getComputedCss(cssProperty)
+      .getComputedCss?(cssProperty)
       .nodeify(done)
 
   getTagName: (elem, done) ->
-    winston.test "@getTagName"
+    winston.test '@getTagName'
     elem
-      .getTagName()
+      .getTagName?()
       .nodeify(done)
 
   getText: (elem, done) ->
-    winston.test "@getText on elem"
+    winston.test '@getText on elem'
     elem
-      .text()
+      .text?()
       .nodeify(done)
 
   getInnerHtmlByCss: (cssSelector, done) ->
-    winston.test "@getInnerHtmlByCss on ", cssSelector
+    winston.test "@getInnerHtmlByCss on #{cssSelector}"
     clientInnerHtml = ->
-      return $( arguments[0] )[0].innerHTML
+      return $(arguments[0])[0].innerHTML
     @executeClientScript clientInnerHtml, cssSelector, done
-
-  getAlertText: (done) ->
-    winston.test "@getAlertText"
-    @driver
-      .getAlertText()
-      .nodeify(done)
 
   getCssCount: (cssSelector, done) ->
     winston.test '@getCssCount'
@@ -645,150 +469,188 @@ module.exports = class DriverWrapper
       winston.test "Count is: #{count}"
       done error, count
 
-  getTextOfListByCss: (cssSelector, done) ->
-    winston.test '@getTextOfListByCss', cssSelector
-    @getElementsByCss cssSelector, (error, elems) =>
-      if error then return done error
-      async.reduce elems, [], (htmlList, elem, next) =>
-        @getText elem, (error, elemHtml) ->
-          if error
-            if error.message.match /Element is no longer attached to the DOM/
-              # This will catch the flakiness of getting text from an element that changes
-              #   if you're actually checking the text, your test will still fail, but if all your test is concerned with
-              #   is concerned with is the general list (or count) it won't fail due to page load delay
-              htmlList.push ''
-              return next null, htmlList
-            else
-              return done error
-          htmlList.push elemHtml
-          next null, htmlList
-      , (error, results) => done error, results
-
-  getOptionValuesByCss: (cssSelector, done) ->
-    winston.test '@getOptionValuesByCss', cssSelector
+  getTextOfElementsByCss: (cssSelector, done) ->
+    winston.test "@getTextOfElementsByCss #{cssSelector}"
     clientGetTextFromElems = (cssPath) ->
       innards = []
-      $("#{cssPath}").each (i, el) -> innards.push $(el).text()
+      $(cssPath).each (i, el) -> innards.push $(el).text()
       return innards
     @executeClientScript clientGetTextFromElems, cssSelector, done
 
-  ######################################
-  ##    Element Comparison
-  ######################################
+  #####################################
+  #   /Getter Methods
+  #####################################
 
-  compareElements: (elem1, elem2, done) ->
-    winston.test "@compareElements"
-    @driver
-      .equalsElement(elem1, elem2)
-      .nodeify(done)
 
-  ######################################
-  ##    Wait Methods
-  ######################################
+  #####################################
+  #   Wait Methods
+  #####################################
 
   ###
-  #  @param expectedUrl string or regex
-  #  @param to - should it match or not
-  #  @param done callback, gets (error, url).
+  #  Generic `waitFor` method, can be used to wait for:
+  #     test conditions or browser conditions
+  #  wait for a `checkFn` callback to return true.
+  #
+  #  @checkFn(): should return (null,true) when passes.
+  #    - can return error on error. null,false is ignored.
+  #  @options
+  #    @interval default 100ms.
+  #    @timeout total time to wait. default 3 seconds.
+  #    @msg message on timeout error
   ###
-  waitForUrlToChange: (expectedUrl, to = true, done) ->
-    winston.test '@waitForUrlToChange ' + (if to then 'to' else 'from') + ' ' + expectedUrl
+  waitForSomething: (checkFn, options, done) ->
+    winston.test '@waitForSomething'
+    _.defaults options,
+      interval: 100
+      timeout: 3000
+      msg: '[something]'
+
+    _finished = false
+    checkCount = 0
+
+    finish = _.once (error, result)->
+      _finished = true
+      clearTimeout finishTimeout
+      winston.test "@waitForSomething finished after #{checkCount} checks. Took #{Date.now() - startTime}ms"
+      if error then done error
+      else done()
+
+    finishTimeout = setTimeout ->
+      finish new Error "Timed out after #{options.timeout}ms (#{checkCount} checks): #{options.msg}"
+    , options.timeout
+
+    startTime = Date.now()
+    async.whilst ->
+      _finished is false
+
+    , (doneCheck)->
+      # do a check. ends immediately on success or error.
+      # on failure, waits til at least interval to end / check again.
+
+      checkCount++
+      doneCheck = _.once doneCheck
+
+      intervalHasPassed = false
+      checkIsDone = false
+
+      # note when interval has passed,
+      # and end if check is done.
+      setTimeout ->
+        intervalHasPassed = true
+        if checkIsDone
+          doneCheck()
+      , options.interval
+
+      checkFn (error, result)->
+        checkIsDone = true
+
+        if error or result is true
+          finish error, result
+
+          # end flow immediately
+          doneCheck()
+        else
+          # if check took longer than interval
+          if intervalHasPassed
+            doneCheck()
+          # (otherwise timeout runs)
+
+    , -> #(already ended by `finish`)
+
+  ###
+  #  @expectedUrl string or regex
+  #  @matches - should it match or not
+  #  @options - options object for custom timeout & interval
+  #  @done callback, gets (error, url).
+  ###
+  waitForUrlToChange: (expectedUrl, matches = true, options..., done) ->
+    toFrom = if matches then 'to' else 'from'
+    winston.test "@waitForUrlToChange #{toFrom} #{expectedUrl}"
+
+    options = options.shift() or {}
+    _.defaults options,
+      timeout: LONG_TIMEOUT
+      interval: SHORT_INTERVAL
 
     checkUrl = (callback) =>
-      @getCurrentUrl (error, newUrl) =>
+      @getCurrentUrl (error, newUrl) ->
         if error then return callback error
         if _.isString(expectedUrl)    # string
-          check = (newUrl is expectedUrl) is to
+          check = (newUrl is expectedUrl) is matches
         else                          # regex
-          check = (!!newUrl.match expectedUrl) is to
+          check = (!!newUrl.match expectedUrl) is matches
         callback null, check
 
     @waitForSomething checkUrl,
-      msg: "URL did not change  #{if to then 'to' else 'from'} #{expectedUrl}"
-      timeout: 12500
-      interval: 200
+      msg: "URL did not change  #{toFrom} #{expectedUrl}"
+      timeout: options.timeout
+      interval: options.interval
 
     , (error) =>
-      winston.test "-- waitForUrlToChange done. Attempting to get url", [ expectedUrl, error?.message ? 'no error' ]
+      winston.test '-- waitForUrlToChange done. Attempting to get url', [ expectedUrl, error?.message ? 'no error' ]
       if error then return done error
       # pass back the new URL
       @getCurrentUrl done
 
 
   ###
-  # Wait for an element to have an attribute. attributeValue is returned
-  # @cssSelector
+  # wait for an element to have an attribute
+  # @cssSelector the path to the element
   # @attr the attribute that you're expecting the evelope to have
   # @attrValue [optional] set if your waiting for the attribute to have a specific value
   # @done callback gets the el. (no reason to run 2nd call to get it when we know it exists.)
   ###
   waitForAttributeByCss: (cssSelector, attr, attrValue, done) ->
-    winston.test '@waitForAttributeByCss', cssSelector, attr, attrValue
+    winston.test "@waitForAttributeByCss {cssSelector: #{cssSelector}\nattr: #{attr}\nattrValue: #{attrValue}}"
     elemAttributeValue = null
 
     @waitForSomething (callback) =>
-      @getAttributeValueByCss cssSelector, attr, (error, val) =>
+      @getAttributeValueByCss cssSelector, attr, (error, val) ->
         if error then return callback error
         else
           return callback null, false unless val?
-          return callback null, false if attrValue and val isnt attrValue
+          return callback null, false if attrValue? and val isnt attrValue
           elemAttributeValue = val
           callback null, true
     ,
       msg: "'#{attr}' -- not found"
-      timeout: 5000
-      interval: 500
-    , (error) =>
+      timeout: SHORT_TIMEOUT
+      interval: LONG_INTERVAL
+    , (error) ->
       if error then return done error
-      winston.test "element '#{cssSelector}' has attribute #{attr}", elemAttributeValue
+      winston.test "element '#{cssSelector}' has attribute #{attr} with value #{elemAttributeValue}"
       done null, elemAttributeValue
 
-
   ###
-  #  Wait for multiple elements to exist.
-  #    => @done(error, elemsFound)
+  # this method has benefit when waiting for text that isn't visible
   ###
-  waitForElementsByCss: (cssSelector, done) ->
-    winston.test '@waitForElementsByCss', cssSelector
-    elemsFound = null
-
-    @waitForSomething (callback) =>
-      @getElementsByCss cssSelector, (error, elems) =>
-        if error
-          if error.name is 'NoSuchElementError'
-            return callback null, false
-          else
-            return callback error
-        else
-          elemsFound = elems
-          callback null, true
-    ,
-      msg: "'#{cssSelector}' -- not found"
-      timeout: 5000
-      interval: 500
-    , (error) =>
-      if error then return done error
-      winston.test "element '#{cssSelector}' exists"
-      done null, elemsFound
-
-
-  # This method has benefit when waiting for text that isn't visible
-  waitForInnerHtmlByCss: (selectorValue, regex, done) =>
-    winston.test "@waitForInnerHtmlByCss using selectorValue: #{selectorValue}"
+  waitForInnerHtmlByCss: (selectorValue, regex, options..., done) =>
+    winston.test "@waitForInnerHtmlByCss using { selectorValue: #{selectorValue}\n regex: #{regex} }"
     done = _.once done
-    @waitForSomething (callback) =>
-      @getInnerHtmlByCss selectorValue, (error, html) =>
-        if error then return callback error
-        unless html then return callback null, false
-        else callback null, (!!html.match regex)
-    ,
-      msg: "'#{regex}' -- not found"
+    options = options.shift() or {}
+    _.defaults options,
       timeout: 10000
       interval: 100
-    , (error) =>
-      winston.test ' done waiting for regex to match'
+    htmlToReturn = null
+
+    @waitForElementByCss selectorValue, options, (error) =>
       if error then return done error
-      done null, true
+
+      @waitForSomething (callback) =>
+        @getInnerHtmlByCss selectorValue, (error, html) ->
+          winston.test '    html is: ' + (html ? '[empty]')
+          if error then return callback error
+          htmlToReturn = html
+          unless html then return callback null, false
+          else callback null, (!!html.match regex)
+      ,
+        msg: "'#{regex}' -- not found. Last html found: #{htmlToReturn}"
+        timeout: options.timeout
+        interval: options.interval
+      , (error) ->
+        winston.test "done waiting for regex to match #{error ? 'no error'}"
+        if error then return done error
+        done null, htmlToReturn
 
   ### waitForCondition expected params
   # @conditionExpr: condition expression, should return a boolean
@@ -798,31 +660,39 @@ module.exports = class DriverWrapper
 
   # Waits for condition to be true (polling within wd client)
   waitForCondition: (conditionExpr, timeout = 5, pollFreq = 300, done) ->
-    winston.test "@waitForCondition"
+    winston.test '@waitForCondition'
     timeout = timeout * 1000
+    condtion = asserters.jsCondition conditionExpr, true
     @driver
-      .waitForCondition(conditionExpr, timeout, pollFreq)
+      .waitFor(condtion, timeout, pollFreq)
       .nodeify(done)
 
   # Waits for condition to be true (async script polling within browser)
   waitForConditionInBrowser: (conditionExpr, timeout = 5, pollFreq = 300, done) ->
-    winston.test "@waitForConditionInBrowser"
+    winston.test '@waitForConditionInBrowser'
     timeout = timeout * 1000
     @driver
       .waitForConditionInBrowser(conditionExpr, timeout, pollFreq)
       .nodeify(done)
 
-  # @Note: `wdElementObject`s are returned by methods where it would be expected.
-  #         Code according else file Pull Req :)
+  #####################################
+  #   /Wait Methods
+  #####################################
+
+
+  #####################################
+  #   Misc Action Methods
+  #####################################
+
   ###
-  # Simulates a mouse click and drag
-  # @startElement wdElementObject - Element to move.  With most broswer drivers, the element is
-  #                                 clicked from the center. I think.
-  # @endpointPosition Object  - Object with x/y attributes - e.g.: {x: 20, y: 230}
-  # @endpointElement wdElementObject - Element to end at.
+  # NOTE: this method is working but needs tests
+  # @startElement - Element to move
+  # @endpointPosition - takes in an object with x/y attributes - for example: {x: 20, y: 230}
+  # @endpointElement - wd's documentation says this is optional, but that's not true
+  #                   it actually bases the endpointPosition off the position of this element
   ###
   dragElement: (startElement, endpointPosition, endpointElement, done) ->
-    winston.test '@dragElement', endpointPosition
+    winston.test "@dragElement #{endpointPosition}"
     @driver
       .moveTo(startElement, undefined, undefined)
       .buttonDown(0)
@@ -831,8 +701,11 @@ module.exports = class DriverWrapper
       .buttonUp(0)
       .nodeify(done) # same as: `.then( -> done() )`
 
+  ###
+  # Similar to `dragElement`, but simulates a mouse click to select then another to drop
+  ###
   clickAndStamp: (startElement, endpointPosition, endpointElement, done) ->
-    winston.test '@clickAndStamp', endpointPosition
+    winston.test "@clickAndStamp #{endpointPosition}"
     @driver
       .moveTo(startElement, undefined, undefined)
       .buttonDown(0)
@@ -843,10 +716,843 @@ module.exports = class DriverWrapper
       .buttonUp(0)
       .nodeify(done) # same as: `.then( -> done() )`
 
+  ieClickAndStamp: (startElement, endpointPosition, endpointElement, done) ->
+    # @todo: ....ugh ie. The below link will give some brave soul a place to start :D :heart:
+    #       https://code.google.com/p/selenium/issues/detail?id=4403#c14
+
+  # Doesn't work and is very fragile. Needs tests
+  # Leaving this to maybe fix later.
+  ieDragAndDrop: (startElement, endpointPosition, endpointElement, done) ->
+    winston.test "@ieDragAndDrop #{endpointPosition}"
+    elemPos = pageX = pageY = elemId = null
+    endPos = _.defaults endpointPosition
+    @namedSteps
+      endElemPost: (next) =>
+        @getElementLocation endpointElement, (error, pos) ->
+          endPos.x = endPos.x + pos.x
+          endPos.y = endPos.y + pos.y
+          next error
+      elemPosition: (next) =>
+        @getElementLocation startElement, (error, pos) ->
+          elemPos = pos
+          next error
+      elemSize: (next) =>
+        startElement.getSize().nodeify (error, elemSize) ->
+          pageX = elemPos.x + ~~(elemSize.width / 2)
+          pageY = elemPos.y + ~~(elemSize.height / 2)
+          next error
+      elemId: (next) =>
+        @getAttributeValue startElement, 'id', (error, _elemId) =>
+          elemId = _elemId
+          next error
+      jsSimulation: (next) =>
+        # yup this is specific to martini, needs a refactor
+        className = 'title'
+        wtfIe = "var mousedown=document.createEvent(\"MouseEvent\"),mouseup=document.createEvent(\"MouseEvent\"),elem=document.getElementById(\"#{elemId}\"),result=[],elems=elem.getElementsByTagName(\"*\"),k=0,j=0,i,interval;for(i in elems){if((\" \"+elems[i].className+\" \").indexOf(\" #{className} \")>-1){result.push(elems[i]);}}mousedown.initMouseEvent(\"mousedown\",true,true,window,0,0,0,#{pageX},#{pageY},0,0,0,0,0,null);result[0].dispatchEvent(mousedown);interval=setInterval(function(){if(k!==#{endPos.x}){k++;};if(j!==#{endPos.y}){j++;};iter(k,j);if(k===#{endPos.x}+1&&j===#{endPos.y}+1){clearInterval(interval);mouseup.initMouseEvent(\"mouseup\",true,true,window,0,#{pageX}+k,#{pageY}+j,#{pageX}+k,#{pageY}+j,0,0,0,0,0,null);result[0].dispatchEvent(mouseup);}},100);function iter(_x,_y){var mousemove=document.createEvent(\"MouseEvent\");mousemove.initMouseEvent(\"mousemove\",true,true,window,0,0,0,#{pageX}+_x,#{pageY}+_y,0,0,0,0,0,null);result[0].dispatchEvent(mousemove);}"
+        @driver.safeExecute wtfIe, next
+    , done
+
+  #####################################
+  #   /Misc Action Methods
+  #####################################
+
+
+############################################################################
+##
+## Element Suffixed Methods
+## e.g. do__X__ByCss , do__X__ById, etc... functions
+##
+
+_elementFuncTypes = ['class name','css selector','id','name','link text','partial link text','tag name','xpath','css']
+
+# convert to type to something like ById, ByCssSelector, etc...
+_elFuncSuffix = (type) ->
+  res = (" by " + type).replace /(\s[a-z])/g, ($1)-> $1.toUpperCase().replace " ", ""
+  res.replace "Xpath", "XPath"
+
+_.each _elementFuncTypes, (type)->
+
+  #####################################
+  #   Find Methods
+  #####################################
+
   ###
-  # => @done(error, sourceHtml)
+  # Single Find
+  #   @getElementByClassName = (selectorValue, done) -> done(error, elem)
+  #   @getElementByCssSelector = (selectorValue, done) -> done(error, elem)
+  #   @getElementById = (selectorValue, done) -> done(error, elem)
+  #   @getElementByName = (selectorValue, done) -> done(error, elem)
+  #   @getElementByLinkText = (selectorValue, done) -> done(error, elem)
+  #   @getElementByPartialLinkText = (selectorValue, done) -> done(error, elem)
+  #   @getElementByTagName = (selectorValue, done) -> done(error, elem)
+  #   @getElementByXPath = (selectorValue, done) -> done(error, elem)
+  #   @getElementByCss = (selectorValue, done) -> done(error, elem)
   ###
-  getFullBody: (done)->
-    @driver
-      .source()
-      .nodeify(callback)
+  DriverWrapper::['getElement' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@getElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @driver["element#{_elFuncSuffix type}"](selectorValue)
+      .nodeify (error, elem) ->
+        winston.test "got the elem: #{elem}"
+        done error, elem
+
+  ###
+  # Find single Elem IfExists
+  #   @getElemIfExistsByClassName = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsByCssSelector = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsById = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsByName = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsByLinkText = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsByPartialLinkText = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsByTagName = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsByXPath = (selectorValue, done) -> done(error, elemOrUndefined)
+  #   @getElemIfExistsByCss = (selectorValue, done) -> done(error, elemOrUndefined)
+  ###
+  DriverWrapper::['getElemIfExists' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@#{"element#{_elFuncSuffix type}IfExists"} using selectorValue: #{selectorValue}"
+    @driver["element#{_elFuncSuffix type}IfExists"](selectorValue)
+      .nodeify (error, elem) ->
+        winston.test "got the elem: #{elem}"
+        done error, elem
+
+  ###
+  # Multi Find
+  #   @getElementsByClassName = (selectorValue, done) -> done(error, elems)
+  #   @getElementsByCssSelector = (selectorValue, done) -> done(error, elems)
+  #   @getElementsById = (selectorValue, done) -> done(error, elems)
+  #   @getElementsByName = (selectorValue, done) -> done(error, elems)
+  #   @getElementsByLinkText = (selectorValue, done) -> done(error, elems)
+  #   @getElementsByPartialLinkText = (selectorValue, done) -> done(error, elems)
+  #   @getElementsByTagName = (selectorValue, done) -> done(error, elems)
+  #   @getElementsByXPath = (selectorValue, done) -> done(error, elems)
+  #   @getElementsByCss = (selectorValue, done) -> done(error, elems)
+  ###
+  DriverWrapper::['getElements' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@getElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @driver["elements#{_elFuncSuffix type}"](selectorValue)
+      .nodeify (error, elems) ->
+        winston.test "got the elems: #{elems}"
+        done error, elems
+
+  ###
+  # Find ElemOrNull
+  #   @findElementOrNullByClassName = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullByCssSelector = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullById = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullByName = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullByLinkText = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullByPartialLinkText = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullByTagName = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullByXPath = (selectorValue, done) -> done(error, elemOrNull)
+  #   @findElementOrNullByCss = (selectorValue, done) -> done(error, elemOrNull)
+  ###
+  DriverWrapper::['findElementOrNull' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@findElementOrNull#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @driver["element#{_elFuncSuffix type}OrNull"](selectorValue)
+      .nodeify (error, elem) ->
+        winston.test "got the elem?: #{elem}"
+        done error, elem
+
+  ###
+  #   @getChildElementByClassName = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementByCssSelector = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementById = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementByName = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementByLinkText = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementByPartialLinkText = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementByTagName = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementByXPath = (elem, selectorValue, done) -> done(error, elem)
+  #   @getChildElementByCss = (elem, selectorValue, done) -> done(error, elem)
+  ###
+  DriverWrapper::['getChildElement' + _elFuncSuffix type] = (elem, selectorValue, done) ->
+    winston.test "@getChildElement#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
+    elem["element#{_elFuncSuffix type}"](selectorValue)
+      .nodeify (error, elem) ->
+        winston.test "got the child elem: #{elem}"
+        done error, elem
+
+  ###
+  #   @getChildElementsByClassName = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsByCssSelector = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsById = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsByName = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsByLinkText = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsByPartialLinkText = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsByTagName = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsByXPath = (elem, selectorValue, done) -> done(error, elems)
+  #   @getChildElementsByCss = (elem, selectorValue, done) -> done(error, elems)
+  ###
+  DriverWrapper::['getChildElements' + _elFuncSuffix type] = (elem, selectorValue, done) ->
+    winston.test "@getChildElements#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
+    elem["elements#{_elFuncSuffix type}"](selectorValue)
+      .nodeify (error, elems) ->
+        winston.test "got the elems: #{elems}"
+        done error, elems
+
+  #####################################
+  #   /Find Methods
+  #####################################
+
+
+  #####################################
+  #   Interaction Methods
+  #####################################
+
+  ###
+  #   @clickElementByClassName = (selectorValue, done) -> done(error)
+  #   @clickElementByCssSelector = (selectorValue, done) -> done(error)
+  #   @clickElementById = (selectorValue, done) -> done(error)
+  #   @clickElementByName = (selectorValue, done) -> done(error)
+  #   @clickElementByLinkText = (selectorValue, done) -> done(error)
+  #   @clickElementByPartialLinkText = (selectorValue, done) -> done(error)
+  #   @clickElementByTagName = (selectorValue, done) -> done(error)
+  #   @clickElementByXPath = (selectorValue, done) -> done(error)
+  #   @clickElementByCss = (selectorValue, done) -> done(error)
+  ###
+  DriverWrapper::['clickElement' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test 'Element found! Attempting to click...'
+      elem
+        .click()
+        .nodeify(done)
+
+  ###
+  #   @submitByClassName = (selectorValue, done) -> done(error)
+  #   @submitByCssSelector = (selectorValue, done) -> done(error)
+  #   @submitById = (selectorValue, done) -> done(error)
+  #   @submitByName = (selectorValue, done) -> done(error)
+  #   @submitByLinkText = (selectorValue, done) -> done(error)
+  #   @submitByPartialLinkText = (selectorValue, done) -> done(error)
+  #   @submitByTagName = (selectorValue, done) -> done(error)
+  #   @submitByXPath = (selectorValue, done) -> done(error)
+  #   @submitByCss = (selectorValue, done) -> done(error)
+  ###
+  DriverWrapper::['submit' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@submit#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test 'Element found! Attempting to submit form...'
+      elem
+        .submit()
+        .nodeify(done)
+
+  ###
+  #   @sendTextToElementByClassName = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementByCssSelector = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementById = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementByName = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementByLinkText = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementByPartialLinkText = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementByTagName = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementByXPath = (selectorValue, text, done) -> done(error)
+  #   @sendTextToElementByCss = (selectorValue, text, done) -> done(error)
+  ###
+  DriverWrapper::['sendTextToElement' + _elFuncSuffix type] = (selectorValue, text, done) ->
+    winston.test "@sendTextToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test "Element found! Attempting to type: #{text}"
+      elem
+        .sendKeys(text)
+        .nodeify(done)
+
+  ###
+  #   @clearAndSendTextByClassName = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextByCssSelector = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextById = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextByName = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextByLinkText = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextByPartialLinkText = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextByTagName = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextByXPath = (selectorValue, text, done) -> done(error)
+  #   @clearAndSendTextByCss = (selectorValue, text, done) -> done(error)
+  ###
+  DriverWrapper::['clearAndSendText' + _elFuncSuffix type] = (selectorValue, text, done) ->
+    winston.test "@clearAndSendText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test 'Element found! Attempting to clear...'
+      elem
+        .clear()
+        .then ->
+          winston.test "Element cleared! Attempting to type: #{text}"
+        .type(text)
+        .nodeify(done)
+
+  ###
+  # Move to element, x and y offsets are optional.
+  #   @mouseToElementByClassName = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementByCssSelector = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementById = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementByName = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementByLinkText = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementByPartialLinkText = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementByTagName = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementByXPath = (selectorValue, xOffset, yOffset, done) -> done(error)
+  #   @mouseToElementByCss = (selectorValue, xOffset, yOffset, done) -> done(error)
+  ###
+  DriverWrapper::['mouseToElement' + _elFuncSuffix type] = (selectorValue, xOffset = 0, yOffset = 0, done) ->
+    winston.test "@mouseToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test "Element found! Attempting to move mouse to element...offset( x: #{xOffset}, y: #{yOffset} )"
+      elem
+        .moveTo(xOffset, yOffset)
+        .nodeify(done)
+
+  ###
+  # Double-clicks current mouse using on elem found w/ selectorValue
+  #   @doubleClickElementByClassName = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementByCssSelector = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementById = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementByName = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementByLinkText = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementByPartialLinkText = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementByTagName = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementByXPath = (selectorValue, offsets..., done) -> done(error)
+  #   @doubleClickElementByCss = (selectorValue, offsets..., done) -> done(error)
+  ###
+  DriverWrapper::['doubleClickElement' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
+    winston.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    xOffset = offsets.shift() ? 0
+    yOffset = offsets.shift() ? 0
+    @["mouseToElement#{_elFuncSuffix type}"] selectorValue, xOffset, yOffset, (error) =>
+      if error then return done error
+      winston.test 'Mouse in position! Attempting to double-click...'
+      @driver
+        .doubleclick()
+        .nodeify(done)
+
+  ###
+  # Send mouseDown then mouseUp to elem found w/ selectorValue
+  #   @mouseDownUpByClassName = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpByCssSelector = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpById = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpByName = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpByLinkText = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpByPartialLinkText = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpByTagName = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpByXPath = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseDownUpByCss = (selectorValue, offsets..., done) -> done(error)
+  ###
+  DriverWrapper::['mouseDownUp' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
+    winston.test "@mouseDownUp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    xOffset = offsets.shift() ? 0
+    yOffset = offsets.shift() ? 0
+    @["mouseToElement#{_elFuncSuffix type}"] selectorValue, xOffset, yOffset, (error, elem) =>
+      if error then return done error
+      winston.test 'Mouse in position! Attempting to mouseDown then mouseUp using left mouse button...'
+      @driver
+        .buttonDown(0)
+        .buttonUp(0)
+        .nodeify(done)
+
+  ###
+  #   @mouseClickByClassName = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickByCssSelector = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickById = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickByName = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickByLinkText = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickByPartialLinkText = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickByTagName = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickByXPath = (selectorValue, offsets..., done) -> done(error)
+  #   @mouseClickByCss = (selectorValue, offsets..., done) -> done(error)
+  ###
+  DriverWrapper::['mouseClick' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
+    winston.test "@mouseClick#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    xOffset = offsets.shift() ? 0
+    yOffset = offsets.shift() ? 0
+    @["mouseToElement#{_elFuncSuffix type}"] selectorValue, xOffset, yOffset, (error, elem) =>
+      if error then return done error
+      winston.test 'Mouse in position! Attempting to click using left mouse button...'
+      @driver
+        .click(0)
+        .nodeify(done)
+
+  #####################################
+  #   /Interaction Methods
+  #####################################
+
+
+  #####################################
+  #   Check Methods
+  #####################################
+
+  ###
+  #   @isSelectedByClassName = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedByCssSelector = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedById = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedByName = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedByLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedByPartialLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedByTagName = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedByXPath = (selectorValue, done) -> done(error, boolean)
+  #   @isSelectedByCss = (selectorValue, done) -> done(error, boolean)
+  ###
+  DriverWrapper::['isSelected' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@isSelected#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test 'Element found! Attempting to check if selected...'
+      elem
+        .isSelected()
+        .nodeify (error, selected) ->
+          winston.test "isSelected result: #{selected}"
+          done error, selected
+
+  ###
+  #   @isEnabledByClassName = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledByCssSelector = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledById = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledByName = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledByLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledByPartialLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledByTagName = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledByXPath = (selectorValue, done) -> done(error, boolean)
+  #   @isEnabledByCss = (selectorValue, done) -> done(error, boolean)
+  ###
+  DriverWrapper::['isEnabled' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@isEnabled#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test 'Element found! Attempting to check if enabled...'
+      elem
+        .isEnabled()
+        .nodeify (error, enabled) ->
+          winston.test "isEnabled result: #{enabled}"
+          done error, enabled
+
+  ###
+  #   @isDisplayedByClassName = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedByCssSelector = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedById = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedByName = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedByLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedByPartialLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedByTagName = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedByXPath = (selectorValue, done) -> done(error, boolean)
+  #   @isDisplayedByCss = (selectorValue, done) -> done(error, boolean)
+  ###
+  DriverWrapper::['isDisplayed' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@isDisplayed#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if not elem and error?.message.match /Error response status: 7/
+        # the element doesn't exist, therefor it must not be displayed - so this shouldn't be an error
+        winston.test 'Element not found'
+        return done null, false
+      else if error then return done error
+      winston.test 'Element found! Attempting to check if displayed...'
+      elem
+        .isDisplayed()
+        .nodeify (error, displayed) ->
+          winston.test "isDisplayed result: #{displayed}"
+          done error, displayed
+
+  ###
+  #   @isCheckedByClassName = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedByCssSelector = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedById = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedByName = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedByLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedByPartialLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedByTagName = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedByXPath = (selectorValue, done) -> done(error, boolean)
+  #   @isCheckedByCss = (selectorValue, done) -> done(error, boolean)
+  ###
+  DriverWrapper::['isChecked' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@isChecked#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) =>
+      if error then return done error
+      winston.test 'Element found! Attempting to check if checked...'
+      @getAttributeValue elem, 'checked', (error, checked) ->
+        winston.test "isChecked result: #{!!checked}"
+        done error, !!checked
+
+  ###
+  #   @isTextPresentByClassName = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentByCssSelector = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentById = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentByName = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentByLinkText = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentByPartialLinkText = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentByTagName = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentByXPath = (selectorValue, searchText, done) -> done(error, boolean)
+  #   @isTextPresentByCss = (selectorValue, searchText, done) -> done(error, boolean)
+  ###
+  DriverWrapper::['isTextPresent' + _elFuncSuffix type] = (selectorValue, searchText, done) ->
+    winston.test "@isTextPresent#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test "Element found! Attempting to check for text: #{searchText}"
+      elem
+        .textPresent(searchText)
+        .nodeify (error, textFound) ->
+          winston.test "Text found: #{textFound}"
+          done error, textFound
+
+  ###
+  #   @checkForElementByClassName = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementByCssSelector = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementById = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementByName = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementByLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementByPartialLinkText = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementByTagName = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementByXPath = (selectorValue, done) -> done(error, boolean)
+  #   @checkForElementByCss = (selectorValue, done) -> done(error, boolean)
+  ###
+  DriverWrapper::['checkForElement' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@checkForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @driver["hasElement#{_elFuncSuffix type}"](selectorValue)
+      .nodeify (error, exists) =>
+        winston.test "@checkForElement#{_elFuncSuffix type} result: #{exists}"
+        done error, exists
+
+  #####################################
+  #   /Check Methods
+  #####################################
+
+
+  #####################################
+  #   Getter Methods
+  #####################################
+
+  ###
+  #   @getTextByClassName = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextByCssSelector = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextById = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextByName = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextByLinkText = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextByPartialLinkText = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextByTagName = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextByXPath = (selectorValue, opts..., done) -> done(error, text)
+  #   @getTextByCss = (selectorValue, opts..., done) -> done(error, text)
+  ###
+  DriverWrapper::['getText' + _elFuncSuffix type] = (selectorValue, opts..., done) ->
+    winston.test "@getText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    callCount = opts.shift() or 1
+    # @todo: @ask: @review: is this error check still needed since it uses promises now?
+    if callCount > 2
+      return done new Error 'getText() is in a loop of Error response status: 10'
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) =>
+      if error then return done error
+      winston.test 'Element found! Attempting to get text...'
+      elem
+        .text()
+        .nodeify (error, innerText) =>
+          if error?.message.match /Error response status: 10/
+            @["getText#{_elFuncSuffix type}"] selectorValue, callCount+1, done
+          else done error, innerText
+
+  ###
+  #   @getAttributeValueByClassName = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueByCssSelector = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueById = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueByName = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueByLinkText = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueByPartialLinkText = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueByTagName = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueByXPath = (selectorValue, attrName, done) -> done(error, attrValue)
+  #   @getAttributeValueByCss = (selectorValue, attrName, done) -> done(error, attrValue)
+  ###
+  DriverWrapper::['getAttributeValue' + _elFuncSuffix type] = (selectorValue, attrName, done) ->
+    winston.test "@getAttributeValue#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test "Element found! Attempting to get attribute(#{attrName})..."
+      elem
+        .getAttribute(attrName)
+        .nodeify (error, attrVal) ->
+          winston.test "got attribute value: #{attrVal}"
+          done error, attrVal
+
+  ###
+  #   @getComputedCssPropByClassName = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropByCssSelector = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropById = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropByName = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropByLinkText = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropByPartialLinkText = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropByTagName = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropByXPath = (selectorValue, cssProp, done) -> done(error, computedCss)
+  #   @getComputedCssPropByCss = (selectorValue, cssProp, done) -> done(error, computedCss)
+  ###
+  DriverWrapper::['getComputedCssProp' + _elFuncSuffix type] = (selectorValue, cssProp, done) ->
+    winston.test "@getComputedCssProp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test "Element found! Attempting to get computed css prop(#{cssProp})..."
+      elem
+        .getComputedCss(cssProp)
+        .nodeify (error, cssPropVal) ->
+          winston.test "got computed css property: #{cssPropVal}"
+          done error, cssPropVal
+
+  ###
+  #   @getSizeByClassName = (value, done) -> done(error, elemSize)
+  #   @getSizeByCssSelector = (value, done) -> done(error, elemSize)
+  #   @getSizeById = (value, done) -> done(error, elemSize)
+  #   @getSizeByName = (value, done) -> done(error, elemSize)
+  #   @getSizeByLinkText = (value, done) -> done(error, elemSize)
+  #   @getSizeByPartialLinkText = (value, done) -> done(error, elemSize)
+  #   @getSizeByTagName = (value, done) -> done(error, elemSize)
+  #   @getSizeByXPath = (value, done) -> done(error, elemSize)
+  #   @getSizeByCss = (value, done) -> done(error, elemSize)
+  ###
+  DriverWrapper::['getSize' + _elFuncSuffix type] = (value, done) ->
+    winston.test "@getSize#{_elFuncSuffix type} using #{value}"
+    @["getElement#{_elFuncSuffix type}"] value, (error, elem) ->
+      if error then return done error
+      winston.test 'Element found! Attempting to get elem size...'
+      elem
+        .getSize()
+        .nodeify (error, elemSize) ->
+          winston.test "got elem size: #{elemSize}"
+          done error, elemSize
+
+  ###
+  #   @getElemLocationByClassName = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationByCssSelector = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationById = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationByName = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationByLinkText = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationByPartialLinkText = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationByTagName = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationByXPath = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationByCss = (selectorValue, done) -> done(error, elemLocation)
+  ###
+  DriverWrapper::['getElemLocation' + _elFuncSuffix type] = (selectorValue, done) ->
+    winston.test "@getElemLocation#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      winston.test 'Element found! Attempting to get location...'
+      elem
+        .getElementLocation()
+        .nodeify (error, elemLoc) ->
+          winston.test "got elem location: #{elemLoc}"
+          done error, elemLoc
+
+  #####################################
+  #   /Getter Methods
+  #####################################
+
+
+  #####################################
+  #   Wait For Methods
+  #####################################
+
+  ###
+  #   @waitForElementByClassName = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementByCssSelector = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementById = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementByName = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementByLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementByPartialLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementByTagName = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementByXPath = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementByCss = (selectorValue, options..., done) -> done(error)
+  ###
+  DriverWrapper::['waitForElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, SHORT_INTERVAL)
+      .nodeify (error) ->
+        winston.test 'Waiting complete! Element exists on page'
+        done error
+
+  ###
+  #   @waitForVisibleElementByClassName = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementByCssSelector = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementById = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementByName = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementByLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementByPartialLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementByTagName = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementByXPath = (selectorValue, options..., done) -> done(error)
+  #   @waitForVisibleElementByCss = (selectorValue, options..., done) -> done(error)
+  ###
+  DriverWrapper::['waitForVisibleElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForVisibleElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.isDisplayed, timeout, interval)
+      .nodeify (error) ->
+        winston.test 'Waiting complete! Element is visible'
+        done error
+
+  ###
+  #   @waitForElementToHideByClassName = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideByCssSelector = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideById = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideByName = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideByLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideByPartialLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideByTagName = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideByXPath = (selectorValue, options..., done) -> done(error)
+  #   @waitForElementToHideByCss = (selectorValue, options..., done) -> done(error)
+  ###
+  DriverWrapper::['waitForElementToHide' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForElementToHide#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.isNotDisplayed, timeout, interval)
+      .nodeify (error) ->
+        winston.test 'Waiting complete! Element is hidden'
+        done error
+
+  ###
+  #   @waitForAndGetElementByClassName = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementByCssSelector = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementById = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementByName = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementByLinkText = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementByPartialLinkText = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementByTagName = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementByXPath = (selectorValue, options..., done) -> done(error, elem)
+  #   @waitForAndGetElementByCss = (selectorValue, options..., done) -> done(error, elem)
+  ###
+  DriverWrapper::['waitForAndGetElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForAndGetElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, interval)
+      .nodeify (error) =>
+        if error then return done error
+        winston.test 'Waiting complete! Attempting to get & return element...'
+        @["getElement#{_elFuncSuffix type}"] selectorValue, done
+
+  ###
+  #   @waitForAndGetElementsByClassName = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsByCssSelector = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsById = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsByName = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsByLinkText = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsByPartialLinkText = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsByTagName = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsByXPath = (selectorValue, options..., done) -> done(error, elems)
+  #   @waitForAndGetElementsByCss = (selectorValue, options..., done) -> done(error, elems)
+  ###
+  DriverWrapper::['waitForAndGetElements' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForAndGetElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, interval)
+      .nodeify (error) =>
+        if error then return done error
+        winston.test 'Waiting complete! Attempting to get & return element...'
+        @["getElements#{_elFuncSuffix type}"] selectorValue, done
+
+  ###
+  #   @waitForTextByClassName = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextByCssSelector = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextById = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextByName = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextByLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextByPartialLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextByTagName = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextByXPath = (selectorValue, options..., done) -> done(error)
+  #   @waitForTextByCss = (selectorValue, options..., done) -> done(error)
+  ###
+  DriverWrapper::['waitForText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.nonEmptyText, timeout, interval)
+      .nodeify (error) =>
+        winston.test 'Waiting complete, element text is not empty.'
+        done error
+
+  ###
+  #   @waitForElementTextByClassName = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextByCssSelector = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextById = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextByName = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextByLinkText = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextByPartialLinkText = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextByTagName = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextByXPath = (selectorValue, text, options..., done) -> done(error, boolean)
+  #   @waitForElementTextByCss = (selectorValue, text, options..., done) -> done(error, boolean)
+  # @todo: refactor to use asserters.textInclude()
+  ###
+  DriverWrapper::['waitForElementText' + _elFuncSuffix type] = (selectorValue, text, options..., done) ->
+    winston.test "@waitForElementText#{_elFuncSuffix type} using selectorValue: #{selectorValue}, expected text: #{text}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
+      if error then return done error
+      winston.test "Element found! Attempting to check text for #{text}..."
+      elem
+        .textPresent(text)
+        .nodeify (error, present) =>
+          winston.test "text present? => #{present}"
+          done error, present
+
+  ###
+  #   @waitForAndGetTextByClassName = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextByCssSelector = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextById = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextByName = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextByLinkText = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextByPartialLinkText = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextByTagName = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextByXPath = (selectorValue, options..., done) -> done(error, text)
+  #   @waitForAndGetTextByCss = (selectorValue, options..., done) -> done(error, text)
+  ###
+  DriverWrapper::['waitForAndGetText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForAndGetText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
+      if error then return done error
+      winston.test 'Element found! Attempting to get text...'
+      elem
+        .text()
+        .nodeify (error, text) =>
+          winston.test "Got text? => #{text}"
+          done error, text
+
+  ###
+  #   @waitForAndClickElementByClassName = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementByCssSelector = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementById = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementByName = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementByLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementByPartialLinkText = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementByTagName = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementByXPath = (selectorValue, options..., done) -> done(error)
+  #   @waitForAndClickElementByCss = (selectorValue, options..., done) -> done(error)
+  ###
+  DriverWrapper::['waitForAndClickElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+    winston.test "@waitForAndClickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    options = options.shift() or {}
+    {timeout, interval} = options
+    timeout = timeout ? SHORT_TIMEOUT
+    interval = interval ? SHORT_INTERVAL
+    @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
+      if error then return done error
+      winston.test 'Element found! Attempting to click...'
+      elem
+        .click()
+        .nodeify(done)
+
+  #####################################
+  #   /Wait For Methods
+  #####################################
