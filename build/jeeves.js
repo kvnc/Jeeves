@@ -896,7 +896,7 @@
      *   @getElementByXPath = (selectorValue, done) -> done(error, elem)
      *   @getElementByCss = (selectorValue, done) -> done(error, elem)
      */
-    DriverWrapper.prototype['getElement' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['getElement' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@getElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this.driver["element" + (_elFuncSuffix(type))](selectorValue).nodeify(function(error, elem) {
         winston.test("got the elem: " + elem);
@@ -916,7 +916,7 @@
      *   @getElemIfExistsByXPath = (selectorValue, done) -> done(error, elemOrUndefined)
      *   @getElemIfExistsByCss = (selectorValue, done) -> done(error, elemOrUndefined)
      */
-    DriverWrapper.prototype['getElemIfExists' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['getElemIfExists' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@" + ("element" + (_elFuncSuffix(type)) + "IfExists") + " using selectorValue: " + selectorValue);
       return this.driver["element" + (_elFuncSuffix(type)) + "IfExists"](selectorValue).nodeify(function(error, elem) {
         winston.test("got the elem: " + elem);
@@ -936,7 +936,7 @@
      *   @getElementsByXPath = (selectorValue, done) -> done(error, elems)
      *   @getElementsByCss = (selectorValue, done) -> done(error, elems)
      */
-    DriverWrapper.prototype['getElements' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['getElements' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@getElements" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this.driver["elements" + (_elFuncSuffix(type))](selectorValue).nodeify(function(error, elems) {
         winston.test("got the elems: " + elems);
@@ -956,7 +956,7 @@
      *   @findElementOrNullByXPath = (selectorValue, done) -> done(error, elemOrNull)
      *   @findElementOrNullByCss = (selectorValue, done) -> done(error, elemOrNull)
      */
-    DriverWrapper.prototype['findElementOrNull' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['findElementOrNull' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@findElementOrNull" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this.driver["element" + (_elFuncSuffix(type)) + "OrNull"](selectorValue).nodeify(function(error, elem) {
         winston.test("got the elem?: " + elem);
@@ -975,7 +975,7 @@
      *   @getChildElementByXPath = (elem, selectorValue, done) -> done(error, elem)
      *   @getChildElementByCss = (elem, selectorValue, done) -> done(error, elem)
      */
-    DriverWrapper.prototype['getChildElement' + _elFuncSuffix(type)] = function(elem, selectorValue, done) {
+    Jeeves.prototype['getChildElement' + _elFuncSuffix(type)] = function(elem, selectorValue, done) {
       winston.test("@getChildElement" + (_elFuncSuffix(type)) + " in parent " + (elem != null ? elem.value : void 0) + " using selector '" + selectorValue + "'");
       return elem["element" + (_elFuncSuffix(type))](selectorValue).nodeify(function(error, elem) {
         winston.test("got the child elem: " + elem);
@@ -994,7 +994,7 @@
      *   @getChildElementsByXPath = (elem, selectorValue, done) -> done(error, elems)
      *   @getChildElementsByCss = (elem, selectorValue, done) -> done(error, elems)
      */
-    DriverWrapper.prototype['getChildElements' + _elFuncSuffix(type)] = function(elem, selectorValue, done) {
+    Jeeves.prototype['getChildElements' + _elFuncSuffix(type)] = function(elem, selectorValue, done) {
       winston.test("@getChildElements" + (_elFuncSuffix(type)) + " in parent " + (elem != null ? elem.value : void 0) + " using selector '" + selectorValue + "'");
       return elem["elements" + (_elFuncSuffix(type))](selectorValue).nodeify(function(error, elems) {
         winston.test("got the elems: " + elems);
@@ -1013,7 +1013,7 @@
      *   @clickElementByXPath = (selectorValue, done) -> done(error)
      *   @clickElementByCss = (selectorValue, done) -> done(error)
      */
-    DriverWrapper.prototype['clickElement' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['clickElement' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@clickElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1035,7 +1035,7 @@
      *   @submitByXPath = (selectorValue, done) -> done(error)
      *   @submitByCss = (selectorValue, done) -> done(error)
      */
-    DriverWrapper.prototype['submit' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['submit' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@submit" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1057,7 +1057,7 @@
      *   @sendTextToElementByXPath = (selectorValue, text, done) -> done(error)
      *   @sendTextToElementByCss = (selectorValue, text, done) -> done(error)
      */
-    DriverWrapper.prototype['sendTextToElement' + _elFuncSuffix(type)] = function(selectorValue, text, done) {
+    Jeeves.prototype['sendTextToElement' + _elFuncSuffix(type)] = function(selectorValue, text, done) {
       winston.test("@sendTextToElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1079,7 +1079,7 @@
      *   @clearAndSendTextByXPath = (selectorValue, text, done) -> done(error)
      *   @clearAndSendTextByCss = (selectorValue, text, done) -> done(error)
      */
-    DriverWrapper.prototype['clearAndSendText' + _elFuncSuffix(type)] = function(selectorValue, text, done) {
+    Jeeves.prototype['clearAndSendText' + _elFuncSuffix(type)] = function(selectorValue, text, done) {
       winston.test("@clearAndSendText" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1104,7 +1104,7 @@
      *   @mouseToElementByXPath = (selectorValue, xOffset, yOffset, done) -> done(error)
      *   @mouseToElementByCss = (selectorValue, xOffset, yOffset, done) -> done(error)
      */
-    DriverWrapper.prototype['mouseToElement' + _elFuncSuffix(type)] = function(selectorValue, xOffset, yOffset, done) {
+    Jeeves.prototype['mouseToElement' + _elFuncSuffix(type)] = function(selectorValue, xOffset, yOffset, done) {
       if (xOffset == null) {
         xOffset = 0;
       }
@@ -1133,7 +1133,7 @@
      *   @doubleClickElementByXPath = (selectorValue, offsets..., done) -> done(error)
      *   @doubleClickElementByCss = (selectorValue, offsets..., done) -> done(error)
      */
-    DriverWrapper.prototype['doubleClickElement' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['doubleClickElement' + _elFuncSuffix(type)] = function() {
       var done, offsets, selectorValue, xOffset, yOffset, _i, _ref, _ref1;
       selectorValue = arguments[0], offsets = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@clickElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1162,7 +1162,7 @@
      *   @mouseDownUpByXPath = (selectorValue, offsets..., done) -> done(error)
      *   @mouseDownUpByCss = (selectorValue, offsets..., done) -> done(error)
      */
-    DriverWrapper.prototype['mouseDownUp' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['mouseDownUp' + _elFuncSuffix(type)] = function() {
       var done, offsets, selectorValue, xOffset, yOffset, _i, _ref, _ref1;
       selectorValue = arguments[0], offsets = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@mouseDownUp" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1190,7 +1190,7 @@
      *   @mouseClickByXPath = (selectorValue, offsets..., done) -> done(error)
      *   @mouseClickByCss = (selectorValue, offsets..., done) -> done(error)
      */
-    DriverWrapper.prototype['mouseClick' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['mouseClick' + _elFuncSuffix(type)] = function() {
       var done, offsets, selectorValue, xOffset, yOffset, _i, _ref, _ref1;
       selectorValue = arguments[0], offsets = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@mouseClick" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1218,7 +1218,7 @@
      *   @isSelectedByXPath = (selectorValue, done) -> done(error, boolean)
      *   @isSelectedByCss = (selectorValue, done) -> done(error, boolean)
      */
-    DriverWrapper.prototype['isSelected' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['isSelected' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@isSelected" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1243,7 +1243,7 @@
      *   @isEnabledByXPath = (selectorValue, done) -> done(error, boolean)
      *   @isEnabledByCss = (selectorValue, done) -> done(error, boolean)
      */
-    DriverWrapper.prototype['isEnabled' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['isEnabled' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@isEnabled" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1268,7 +1268,7 @@
      *   @isDisplayedByXPath = (selectorValue, done) -> done(error, boolean)
      *   @isDisplayedByCss = (selectorValue, done) -> done(error, boolean)
      */
-    DriverWrapper.prototype['isDisplayed' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['isDisplayed' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@isDisplayed" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (!elem && (error != null ? error.message.match(/Error response status: 7/) : void 0)) {
@@ -1296,7 +1296,7 @@
      *   @isCheckedByXPath = (selectorValue, done) -> done(error, boolean)
      *   @isCheckedByCss = (selectorValue, done) -> done(error, boolean)
      */
-    DriverWrapper.prototype['isChecked' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['isChecked' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@isChecked" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, (function(_this) {
         return function(error, elem) {
@@ -1323,7 +1323,7 @@
      *   @isTextPresentByXPath = (selectorValue, searchText, done) -> done(error, boolean)
      *   @isTextPresentByCss = (selectorValue, searchText, done) -> done(error, boolean)
      */
-    DriverWrapper.prototype['isTextPresent' + _elFuncSuffix(type)] = function(selectorValue, searchText, done) {
+    Jeeves.prototype['isTextPresent' + _elFuncSuffix(type)] = function(selectorValue, searchText, done) {
       winston.test("@isTextPresent" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1348,7 +1348,7 @@
      *   @checkForElementByXPath = (selectorValue, done) -> done(error, boolean)
      *   @checkForElementByCss = (selectorValue, done) -> done(error, boolean)
      */
-    DriverWrapper.prototype['checkForElement' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['checkForElement' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@checkForElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this.driver["hasElement" + (_elFuncSuffix(type))](selectorValue).nodeify((function(_this) {
         return function(error, exists) {
@@ -1369,7 +1369,7 @@
      *   @getTextByXPath = (selectorValue, opts..., done) -> done(error, text)
      *   @getTextByCss = (selectorValue, opts..., done) -> done(error, text)
      */
-    DriverWrapper.prototype['getText' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['getText' + _elFuncSuffix(type)] = function() {
       var callCount, done, opts, selectorValue, _i;
       selectorValue = arguments[0], opts = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@getText" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1405,7 +1405,7 @@
      *   @getAttributeValueByXPath = (selectorValue, attrName, done) -> done(error, attrValue)
      *   @getAttributeValueByCss = (selectorValue, attrName, done) -> done(error, attrValue)
      */
-    DriverWrapper.prototype['getAttributeValue' + _elFuncSuffix(type)] = function(selectorValue, attrName, done) {
+    Jeeves.prototype['getAttributeValue' + _elFuncSuffix(type)] = function(selectorValue, attrName, done) {
       winston.test("@getAttributeValue" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1430,7 +1430,7 @@
      *   @getComputedCssPropByXPath = (selectorValue, cssProp, done) -> done(error, computedCss)
      *   @getComputedCssPropByCss = (selectorValue, cssProp, done) -> done(error, computedCss)
      */
-    DriverWrapper.prototype['getComputedCssProp' + _elFuncSuffix(type)] = function(selectorValue, cssProp, done) {
+    Jeeves.prototype['getComputedCssProp' + _elFuncSuffix(type)] = function(selectorValue, cssProp, done) {
       winston.test("@getComputedCssProp" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1455,7 +1455,7 @@
      *   @getSizeByXPath = (value, done) -> done(error, elemSize)
      *   @getSizeByCss = (value, done) -> done(error, elemSize)
      */
-    DriverWrapper.prototype['getSize' + _elFuncSuffix(type)] = function(value, done) {
+    Jeeves.prototype['getSize' + _elFuncSuffix(type)] = function(value, done) {
       winston.test("@getSize" + (_elFuncSuffix(type)) + " using " + value);
       return this["getElement" + (_elFuncSuffix(type))](value, function(error, elem) {
         if (error) {
@@ -1480,7 +1480,7 @@
      *   @getElemLocationByXPath = (selectorValue, done) -> done(error, elemLocation)
      *   @getElemLocationByCss = (selectorValue, done) -> done(error, elemLocation)
      */
-    DriverWrapper.prototype['getElemLocation' + _elFuncSuffix(type)] = function(selectorValue, done) {
+    Jeeves.prototype['getElemLocation' + _elFuncSuffix(type)] = function(selectorValue, done) {
       winston.test("@getElemLocation" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
       return this["getElement" + (_elFuncSuffix(type))](selectorValue, function(error, elem) {
         if (error) {
@@ -1505,7 +1505,7 @@
      *   @waitForElementByXPath = (selectorValue, options..., done) -> done(error)
      *   @waitForElementByCss = (selectorValue, options..., done) -> done(error)
      */
-    DriverWrapper.prototype['waitForElement' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForElement' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1530,7 +1530,7 @@
      *   @waitForVisibleElementByXPath = (selectorValue, options..., done) -> done(error)
      *   @waitForVisibleElementByCss = (selectorValue, options..., done) -> done(error)
      */
-    DriverWrapper.prototype['waitForVisibleElement' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForVisibleElement' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForVisibleElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1555,7 +1555,7 @@
      *   @waitForElementToHideByXPath = (selectorValue, options..., done) -> done(error)
      *   @waitForElementToHideByCss = (selectorValue, options..., done) -> done(error)
      */
-    DriverWrapper.prototype['waitForElementToHide' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForElementToHide' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForElementToHide" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1580,7 +1580,7 @@
      *   @waitForAndGetElementByXPath = (selectorValue, options..., done) -> done(error, elem)
      *   @waitForAndGetElementByCss = (selectorValue, options..., done) -> done(error, elem)
      */
-    DriverWrapper.prototype['waitForAndGetElement' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForAndGetElement' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForAndGetElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1610,7 +1610,7 @@
      *   @waitForAndGetElementsByXPath = (selectorValue, options..., done) -> done(error, elems)
      *   @waitForAndGetElementsByCss = (selectorValue, options..., done) -> done(error, elems)
      */
-    DriverWrapper.prototype['waitForAndGetElements' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForAndGetElements' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForAndGetElements" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1640,7 +1640,7 @@
      *   @waitForTextByXPath = (selectorValue, options..., done) -> done(error)
      *   @waitForTextByCss = (selectorValue, options..., done) -> done(error)
      */
-    DriverWrapper.prototype['waitForText' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForText' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForText" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1668,7 +1668,7 @@
      *   @waitForElementTextByCss = (selectorValue, text, options..., done) -> done(error, boolean)
      * @todo: refactor to use asserters.textInclude()
      */
-    DriverWrapper.prototype['waitForElementText' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForElementText' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, text, timeout, _i;
       selectorValue = arguments[0], text = arguments[1], options = 4 <= arguments.length ? __slice.call(arguments, 2, _i = arguments.length - 1) : (_i = 2, []), done = arguments[_i++];
       winston.test("@waitForElementText" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue + ", expected text: " + text);
@@ -1704,7 +1704,7 @@
      *   @waitForAndGetTextByXPath = (selectorValue, options..., done) -> done(error, text)
      *   @waitForAndGetTextByCss = (selectorValue, options..., done) -> done(error, text)
      */
-    DriverWrapper.prototype['waitForAndGetText' + _elFuncSuffix(type)] = function() {
+    Jeeves.prototype['waitForAndGetText' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForAndGetText" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
@@ -1740,7 +1740,7 @@
      *   @waitForAndClickElementByXPath = (selectorValue, options..., done) -> done(error)
      *   @waitForAndClickElementByCss = (selectorValue, options..., done) -> done(error)
      */
-    return DriverWrapper.prototype['waitForAndClickElement' + _elFuncSuffix(type)] = function() {
+    return Jeeves.prototype['waitForAndClickElement' + _elFuncSuffix(type)] = function() {
       var done, interval, options, selectorValue, timeout, _i;
       selectorValue = arguments[0], options = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), done = arguments[_i++];
       winston.test("@waitForAndClickElement" + (_elFuncSuffix(type)) + " using selectorValue: " + selectorValue);
