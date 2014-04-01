@@ -25,5 +25,8 @@
     "ensureDir": "^1.0.6",
     "lodash": "^2.4.1",
     "winston": "^0.7.3"
+  },
+  "devDependencies": {
+    "coffee-script": "^1.7.1"
   }
 }
