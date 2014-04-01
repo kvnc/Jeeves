@@ -4,7 +4,9 @@
   "description": "Selenium RemoteWebDriver abstraction layer built on the 'wd' npm module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "coffee --bare --compile --output lib/ src/",
+    "prepublish": "coffee --bare --compile --output lib/ src/",
+    "test": "./node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
