@@ -1,1 +1,1 @@
-module.exports = require('./src/jeeves.js');
+module.exports = require('./build/jeeves.js');
