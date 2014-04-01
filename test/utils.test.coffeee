@@ -1,0 +1,88 @@
+###
+#  Unit Test - Test Utils
+###
+
+should = require 'should'
+_ = require 'lodash'
+async = require 'async'
+jeeves = require '../src/jeeves'
+
+describe 'Jeeves utils', ->
+
+  describe '@namedSteps', ->
+
+    it 'should run a tapped series', (done) ->
+      async = require 'async'
+      async.series
+        workingCase: (doneCase) ->
+          stepsRun = []
+          caughtBefore = []
+          caughtAfter = []
+
+          jeeves.namedSteps
+            stepOne: (next) ->
+              stepsRun.push 1
+              next null, 1
+            stepTwo: (next) ->
+              stepsRun.push 2
+              next null, 2
+            stepThree: (next) ->
+              stepsRun.push 3
+              next null, 3
+
+          # doneCallback
+          , (error, results) ->
+            stepsRun.push "done"
+
+            should.deepEqual results, { stepOne: 1, stepTwo: 2, stepThree: 3 }
+            should.deepEqual stepsRun, [1, 2, 3, 'done']
+            should.deepEqual caughtBefore, ['stepOne', 'stepTwo', 'stepThree']
+            should.deepEqual caughtAfter, ['stepOne', 'stepTwo', 'stepThree']
+
+            doneCase()
+            # done()
+
+          # beforeEach
+          , (fnName, fn) ->
+            caughtBefore.push fnName
+
+          # afterEach
+          , (fnName, fn) ->
+            caughtAfter.push fnName
+
+
+        errorCase: (doneCase) ->
+          stepsRun = []
+          caughtBefore = []
+          caughtAfter = []
+
+          jeeves.namedSteps
+            stepOne: (next) ->
+              stepsRun.push 1
+              next null, 1
+            stepTwo: (next) ->
+              stepsRun.push 2
+              next new Error "stop"
+            stepThree: (next) ->
+              stepsRun.push 3
+              next null, 3
+
+          # doneCallback
+          , (error, results) ->
+            stepsRun.push "done"
+
+            should (error instanceof Error), 'got the expected error'
+
+            should.deepEqual results, { stepOne: 1, stepTwo: undefined }
+            should.deepEqual stepsRun, [1, 2, 'done']
+            should.deepEqual caughtBefore, ['stepOne', 'stepTwo',]
+            should.deepEqual caughtAfter, ['stepOne', 'stepTwo']
+
+            doneCase()
+
+          , (fnName, fn) ->
+            caughtBefore.push fnName
+          , (fnName, fn) ->
+            caughtAfter.push fnName
+
+      , done
