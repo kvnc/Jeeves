@@ -3,8 +3,8 @@ Jeeves
 
 
 ## Initial features (v0.0.0)
-  - Only supports the promise chain version of wd
-  - depends on:
+  - Only supports using the promise chain version of wd
+  - Depends on:
     + `async`
     + `lodash`
     + `ensureDir`
