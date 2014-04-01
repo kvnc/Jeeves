@@ -19,5 +19,11 @@
     "coffeescript"
   ],
   "author": "Whoaa512",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "async": "^0.6.2",
+    "ensureDir": "^1.0.6",
+    "lodash": "^2.4.1",
+    "winston": "^0.7.3"
+  }
 }
