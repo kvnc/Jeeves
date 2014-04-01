@@ -1,1 +1,1 @@
-module.exports = require('./build/jeeves.js');
+module.exports = require('./lib/jeeves.js');
