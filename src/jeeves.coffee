@@ -788,7 +788,7 @@ _.each _elementFuncTypes, (type)->
   #   @getElementByXPath = (selectorValue, done) -> done(error, elem)
   #   @getElementByCss = (selectorValue, done) -> done(error, elem)
   ###
-  DriverWrapper::['getElement' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['getElement' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@getElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["element#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elem) ->
@@ -807,7 +807,7 @@ _.each _elementFuncTypes, (type)->
   #   @getElemIfExistsByXPath = (selectorValue, done) -> done(error, elemOrUndefined)
   #   @getElemIfExistsByCss = (selectorValue, done) -> done(error, elemOrUndefined)
   ###
-  DriverWrapper::['getElemIfExists' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['getElemIfExists' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@#{"element#{_elFuncSuffix type}IfExists"} using selectorValue: #{selectorValue}"
     @driver["element#{_elFuncSuffix type}IfExists"](selectorValue)
       .nodeify (error, elem) ->
@@ -826,7 +826,7 @@ _.each _elementFuncTypes, (type)->
   #   @getElementsByXPath = (selectorValue, done) -> done(error, elems)
   #   @getElementsByCss = (selectorValue, done) -> done(error, elems)
   ###
-  DriverWrapper::['getElements' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['getElements' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@getElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["elements#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elems) ->
@@ -845,7 +845,7 @@ _.each _elementFuncTypes, (type)->
   #   @findElementOrNullByXPath = (selectorValue, done) -> done(error, elemOrNull)
   #   @findElementOrNullByCss = (selectorValue, done) -> done(error, elemOrNull)
   ###
-  DriverWrapper::['findElementOrNull' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['findElementOrNull' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@findElementOrNull#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["element#{_elFuncSuffix type}OrNull"](selectorValue)
       .nodeify (error, elem) ->
@@ -863,7 +863,7 @@ _.each _elementFuncTypes, (type)->
   #   @getChildElementByXPath = (elem, selectorValue, done) -> done(error, elem)
   #   @getChildElementByCss = (elem, selectorValue, done) -> done(error, elem)
   ###
-  DriverWrapper::['getChildElement' + _elFuncSuffix type] = (elem, selectorValue, done) ->
+  Jeeves::['getChildElement' + _elFuncSuffix type] = (elem, selectorValue, done) ->
     winston.test "@getChildElement#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
     elem["element#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elem) ->
@@ -881,7 +881,7 @@ _.each _elementFuncTypes, (type)->
   #   @getChildElementsByXPath = (elem, selectorValue, done) -> done(error, elems)
   #   @getChildElementsByCss = (elem, selectorValue, done) -> done(error, elems)
   ###
-  DriverWrapper::['getChildElements' + _elFuncSuffix type] = (elem, selectorValue, done) ->
+  Jeeves::['getChildElements' + _elFuncSuffix type] = (elem, selectorValue, done) ->
     winston.test "@getChildElements#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
     elem["elements#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elems) ->
@@ -908,7 +908,7 @@ _.each _elementFuncTypes, (type)->
   #   @clickElementByXPath = (selectorValue, done) -> done(error)
   #   @clickElementByCss = (selectorValue, done) -> done(error)
   ###
-  DriverWrapper::['clickElement' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['clickElement' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -928,7 +928,7 @@ _.each _elementFuncTypes, (type)->
   #   @submitByXPath = (selectorValue, done) -> done(error)
   #   @submitByCss = (selectorValue, done) -> done(error)
   ###
-  DriverWrapper::['submit' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['submit' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@submit#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -948,7 +948,7 @@ _.each _elementFuncTypes, (type)->
   #   @sendTextToElementByXPath = (selectorValue, text, done) -> done(error)
   #   @sendTextToElementByCss = (selectorValue, text, done) -> done(error)
   ###
-  DriverWrapper::['sendTextToElement' + _elFuncSuffix type] = (selectorValue, text, done) ->
+  Jeeves::['sendTextToElement' + _elFuncSuffix type] = (selectorValue, text, done) ->
     winston.test "@sendTextToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -968,7 +968,7 @@ _.each _elementFuncTypes, (type)->
   #   @clearAndSendTextByXPath = (selectorValue, text, done) -> done(error)
   #   @clearAndSendTextByCss = (selectorValue, text, done) -> done(error)
   ###
-  DriverWrapper::['clearAndSendText' + _elFuncSuffix type] = (selectorValue, text, done) ->
+  Jeeves::['clearAndSendText' + _elFuncSuffix type] = (selectorValue, text, done) ->
     winston.test "@clearAndSendText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -992,7 +992,7 @@ _.each _elementFuncTypes, (type)->
   #   @mouseToElementByXPath = (selectorValue, xOffset, yOffset, done) -> done(error)
   #   @mouseToElementByCss = (selectorValue, xOffset, yOffset, done) -> done(error)
   ###
-  DriverWrapper::['mouseToElement' + _elFuncSuffix type] = (selectorValue, xOffset = 0, yOffset = 0, done) ->
+  Jeeves::['mouseToElement' + _elFuncSuffix type] = (selectorValue, xOffset = 0, yOffset = 0, done) ->
     winston.test "@mouseToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -1013,7 +1013,7 @@ _.each _elementFuncTypes, (type)->
   #   @doubleClickElementByXPath = (selectorValue, offsets..., done) -> done(error)
   #   @doubleClickElementByCss = (selectorValue, offsets..., done) -> done(error)
   ###
-  DriverWrapper::['doubleClickElement' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
+  Jeeves::['doubleClickElement' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
     winston.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     xOffset = offsets.shift() ? 0
     yOffset = offsets.shift() ? 0
@@ -1036,7 +1036,7 @@ _.each _elementFuncTypes, (type)->
   #   @mouseDownUpByXPath = (selectorValue, offsets..., done) -> done(error)
   #   @mouseDownUpByCss = (selectorValue, offsets..., done) -> done(error)
   ###
-  DriverWrapper::['mouseDownUp' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
+  Jeeves::['mouseDownUp' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
     winston.test "@mouseDownUp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     xOffset = offsets.shift() ? 0
     yOffset = offsets.shift() ? 0
@@ -1059,7 +1059,7 @@ _.each _elementFuncTypes, (type)->
   #   @mouseClickByXPath = (selectorValue, offsets..., done) -> done(error)
   #   @mouseClickByCss = (selectorValue, offsets..., done) -> done(error)
   ###
-  DriverWrapper::['mouseClick' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
+  Jeeves::['mouseClick' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
     winston.test "@mouseClick#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     xOffset = offsets.shift() ? 0
     yOffset = offsets.shift() ? 0
@@ -1090,7 +1090,7 @@ _.each _elementFuncTypes, (type)->
   #   @isSelectedByXPath = (selectorValue, done) -> done(error, boolean)
   #   @isSelectedByCss = (selectorValue, done) -> done(error, boolean)
   ###
-  DriverWrapper::['isSelected' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['isSelected' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@isSelected#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -1112,7 +1112,7 @@ _.each _elementFuncTypes, (type)->
   #   @isEnabledByXPath = (selectorValue, done) -> done(error, boolean)
   #   @isEnabledByCss = (selectorValue, done) -> done(error, boolean)
   ###
-  DriverWrapper::['isEnabled' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['isEnabled' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@isEnabled#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -1134,7 +1134,7 @@ _.each _elementFuncTypes, (type)->
   #   @isDisplayedByXPath = (selectorValue, done) -> done(error, boolean)
   #   @isDisplayedByCss = (selectorValue, done) -> done(error, boolean)
   ###
-  DriverWrapper::['isDisplayed' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['isDisplayed' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@isDisplayed#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if not elem and error?.message.match /Error response status: 7/
@@ -1160,7 +1160,7 @@ _.each _elementFuncTypes, (type)->
   #   @isCheckedByXPath = (selectorValue, done) -> done(error, boolean)
   #   @isCheckedByCss = (selectorValue, done) -> done(error, boolean)
   ###
-  DriverWrapper::['isChecked' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['isChecked' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@isChecked#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) =>
       if error then return done error
@@ -1180,7 +1180,7 @@ _.each _elementFuncTypes, (type)->
   #   @isTextPresentByXPath = (selectorValue, searchText, done) -> done(error, boolean)
   #   @isTextPresentByCss = (selectorValue, searchText, done) -> done(error, boolean)
   ###
-  DriverWrapper::['isTextPresent' + _elFuncSuffix type] = (selectorValue, searchText, done) ->
+  Jeeves::['isTextPresent' + _elFuncSuffix type] = (selectorValue, searchText, done) ->
     winston.test "@isTextPresent#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -1202,7 +1202,7 @@ _.each _elementFuncTypes, (type)->
   #   @checkForElementByXPath = (selectorValue, done) -> done(error, boolean)
   #   @checkForElementByCss = (selectorValue, done) -> done(error, boolean)
   ###
-  DriverWrapper::['checkForElement' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['checkForElement' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@checkForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["hasElement#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, exists) =>
@@ -1229,7 +1229,7 @@ _.each _elementFuncTypes, (type)->
   #   @getTextByXPath = (selectorValue, opts..., done) -> done(error, text)
   #   @getTextByCss = (selectorValue, opts..., done) -> done(error, text)
   ###
-  DriverWrapper::['getText' + _elFuncSuffix type] = (selectorValue, opts..., done) ->
+  Jeeves::['getText' + _elFuncSuffix type] = (selectorValue, opts..., done) ->
     winston.test "@getText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     callCount = opts.shift() or 1
     # @todo: @ask: @review: is this error check still needed since it uses promises now?
@@ -1256,7 +1256,7 @@ _.each _elementFuncTypes, (type)->
   #   @getAttributeValueByXPath = (selectorValue, attrName, done) -> done(error, attrValue)
   #   @getAttributeValueByCss = (selectorValue, attrName, done) -> done(error, attrValue)
   ###
-  DriverWrapper::['getAttributeValue' + _elFuncSuffix type] = (selectorValue, attrName, done) ->
+  Jeeves::['getAttributeValue' + _elFuncSuffix type] = (selectorValue, attrName, done) ->
     winston.test "@getAttributeValue#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -1278,7 +1278,7 @@ _.each _elementFuncTypes, (type)->
   #   @getComputedCssPropByXPath = (selectorValue, cssProp, done) -> done(error, computedCss)
   #   @getComputedCssPropByCss = (selectorValue, cssProp, done) -> done(error, computedCss)
   ###
-  DriverWrapper::['getComputedCssProp' + _elFuncSuffix type] = (selectorValue, cssProp, done) ->
+  Jeeves::['getComputedCssProp' + _elFuncSuffix type] = (selectorValue, cssProp, done) ->
     winston.test "@getComputedCssProp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -1300,7 +1300,7 @@ _.each _elementFuncTypes, (type)->
   #   @getSizeByXPath = (value, done) -> done(error, elemSize)
   #   @getSizeByCss = (value, done) -> done(error, elemSize)
   ###
-  DriverWrapper::['getSize' + _elFuncSuffix type] = (value, done) ->
+  Jeeves::['getSize' + _elFuncSuffix type] = (value, done) ->
     winston.test "@getSize#{_elFuncSuffix type} using #{value}"
     @["getElement#{_elFuncSuffix type}"] value, (error, elem) ->
       if error then return done error
@@ -1322,7 +1322,7 @@ _.each _elementFuncTypes, (type)->
   #   @getElemLocationByXPath = (selectorValue, done) -> done(error, elemLocation)
   #   @getElemLocationByCss = (selectorValue, done) -> done(error, elemLocation)
   ###
-  DriverWrapper::['getElemLocation' + _elFuncSuffix type] = (selectorValue, done) ->
+  Jeeves::['getElemLocation' + _elFuncSuffix type] = (selectorValue, done) ->
     winston.test "@getElemLocation#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
@@ -1353,7 +1353,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForElementByXPath = (selectorValue, options..., done) -> done(error)
   #   @waitForElementByCss = (selectorValue, options..., done) -> done(error)
   ###
-  DriverWrapper::['waitForElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1375,7 +1375,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForVisibleElementByXPath = (selectorValue, options..., done) -> done(error)
   #   @waitForVisibleElementByCss = (selectorValue, options..., done) -> done(error)
   ###
-  DriverWrapper::['waitForVisibleElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForVisibleElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForVisibleElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1397,7 +1397,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForElementToHideByXPath = (selectorValue, options..., done) -> done(error)
   #   @waitForElementToHideByCss = (selectorValue, options..., done) -> done(error)
   ###
-  DriverWrapper::['waitForElementToHide' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForElementToHide' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForElementToHide#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1419,7 +1419,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndGetElementByXPath = (selectorValue, options..., done) -> done(error, elem)
   #   @waitForAndGetElementByCss = (selectorValue, options..., done) -> done(error, elem)
   ###
-  DriverWrapper::['waitForAndGetElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForAndGetElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForAndGetElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1442,7 +1442,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndGetElementsByXPath = (selectorValue, options..., done) -> done(error, elems)
   #   @waitForAndGetElementsByCss = (selectorValue, options..., done) -> done(error, elems)
   ###
-  DriverWrapper::['waitForAndGetElements' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForAndGetElements' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForAndGetElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1465,7 +1465,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForTextByXPath = (selectorValue, options..., done) -> done(error)
   #   @waitForTextByCss = (selectorValue, options..., done) -> done(error)
   ###
-  DriverWrapper::['waitForText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1488,7 +1488,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForElementTextByCss = (selectorValue, text, options..., done) -> done(error, boolean)
   # @todo: refactor to use asserters.textInclude()
   ###
-  DriverWrapper::['waitForElementText' + _elFuncSuffix type] = (selectorValue, text, options..., done) ->
+  Jeeves::['waitForElementText' + _elFuncSuffix type] = (selectorValue, text, options..., done) ->
     winston.test "@waitForElementText#{_elFuncSuffix type} using selectorValue: #{selectorValue}, expected text: #{text}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1514,7 +1514,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndGetTextByXPath = (selectorValue, options..., done) -> done(error, text)
   #   @waitForAndGetTextByCss = (selectorValue, options..., done) -> done(error, text)
   ###
-  DriverWrapper::['waitForAndGetText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForAndGetText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForAndGetText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
@@ -1540,7 +1540,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndClickElementByXPath = (selectorValue, options..., done) -> done(error)
   #   @waitForAndClickElementByCss = (selectorValue, options..., done) -> done(error)
   ###
-  DriverWrapper::['waitForAndClickElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
+  Jeeves::['waitForAndClickElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     winston.test "@waitForAndClickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
