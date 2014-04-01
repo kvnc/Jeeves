@@ -18,3 +18,5 @@ Jeeves
 
 ## Todo
   - Need a way to accept config options
+  - add examples
+  - add more tests
