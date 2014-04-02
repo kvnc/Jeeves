@@ -1,6 +1,6 @@
 {
   "name": "jeeves",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Selenium RemoteWebDriver abstraction layer built on the 'wd' npm module",
   "main": "index.js",
   "scripts": {
