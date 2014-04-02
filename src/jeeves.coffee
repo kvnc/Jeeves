@@ -7,6 +7,8 @@ webdriver = require 'wd'
 {asserters} = webdriver
 async = require 'async'
 _ = require 'lodash'
+{logger, _shimLevels} = require './logger'
+
 
 # in ms
 SHORT_TIMEOUT = 8000
@@ -25,6 +27,9 @@ module.exports = class Jeeves
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
 
   constructor: (@driver, options = {}) ->
+    if options.logger?
+      logger = _shimLevels options.logger
+
     @_screenshotDir = options.screenshotDir ? "#{process.cwd()}/test-results/screenshots"
 
   ###
@@ -37,7 +42,7 @@ module.exports = class Jeeves
   namedSteps: (tasks, doneCallback, beforeEach, afterEach) ->
     if _.isArray(tasks)
       throw new Error "asyncSeriesTap only works with a named stack"
-    beforeEach ?= (fnName)-> winston.test "-- #{fnName}"
+    beforeEach ?= (fnName)-> logger.test "-- #{fnName}"
 
     for taskName, taskFn of tasks
       do (taskName, taskFn) ->
@@ -57,101 +62,101 @@ module.exports = class Jeeves
   #####################################
 
   getBrowser: (done) ->
-    winston.test '@getBrowser'
+    logger.test '@getBrowser'
     @driver.getCurrentBrowser done
 
   explicitWait: (seconds, done) ->
-    winston.test '@explicitWait', seconds
+    logger.test '@explicitWait', seconds
     setTimeout done, 1000 * seconds
 
   stopBrowser: (done) ->
-    winston.test '@stopBrowser'
+    logger.test '@stopBrowser'
     clientScript = ->
       window.stop?()
       document.execCommand? "Stop", false
     @executeClientScript clientScript, (error) ->
-      winston.error 'Stopping browser failed', error if error
+      logger.error 'Stopping browser failed', error if error
       done()
 
   loadPage: (url, done) ->
-    winston.test '@loadPage', url
+    logger.test '@loadPage', url
 
     unless url?.length and !!url.toLowerCase().match(/^http/)
       return done new Error "Need full URL to loadPage, but got #{url}"
 
-    winston.test 'Stopping browser before loading page.'
+    logger.test 'Stopping browser before loading page.'
     @stopBrowser (error) =>
       if error
         error.message = "Error stopping browser: #{error.message}"
         return done error
 
-      winston.test "Browser is stopped. Attempting to load url: #{url}"
+      logger.test "Browser is stopped. Attempting to load url: #{url}"
 
       @driver
         .get(url)
         .nodeify (error) =>
-          winston.test "Tried to load #{url}", error or 'no error'
+          logger.test "Tried to load #{url}", error or 'no error'
           done error
 
   loadPageAndWait: (url, done)->
-    winston.test '@loadPageAndWait', url
+    logger.test '@loadPageAndWait', url
     @loadPage url, (error)=>
       if error
-        winston.error "Error loading page: #{error.message ? error}"
+        logger.error "Error loading page: #{error.message ? error}"
         return done error
       # waiting for exact URL requested. so won't handle redirects.
       @waitForUrlToChange url, true, (error, actualUrl)=>
-        winston.test '@loadPageAndWait got', (if error then "Error: #{error.message}" else actualUrl)
+        logger.test '@loadPageAndWait got', (if error then "Error: #{error.message}" else actualUrl)
         done error, actualUrl
 
   getCurrentUrl: (done) ->
-    winston.test '@getCurrentUrl'
+    logger.test '@getCurrentUrl'
     @driver
       .url()
       .nodeify (error, url) ->
-        winston.test "-- current url is #{url}"
+        logger.test "-- current url is #{url}"
         done error, url
 
   navBack: (done) ->
-    winston.test '@navBack'
+    logger.test '@navBack'
     @driver
       .back()
       .nodeify(done)
 
   navForward: (done) ->
-    winston.test '@navForward'
+    logger.test '@navForward'
     @driver
       .forward()
       .nodeify(done)
 
   refreshPage: (done) ->
-    winston.test '@refreshPage'
+    logger.test '@refreshPage'
     @driver
       .refresh()
       .nodeify(done)
 
   getPageTitle: (done) ->
-    winston.test '@getPageTitle'
+    logger.test '@getPageTitle'
     @driver
       .title()
       .nodeify (error, title) ->
-        winston.test 'title obtained:', title
+        logger.test 'title obtained:', title
         done error, title
 
   getWindowHandles: (done) ->
-    winston.test '@getWindowHandles'
+    logger.test '@getWindowHandles'
     @driver
       .windowHandles()
       .nodeify(done)
 
   getCurrentWindowHandle: (done) ->
-    winston.test '@getCurrentWindowHandle'
+    logger.test '@getCurrentWindowHandle'
     @driver
       .windowHandle()
       .nodeify(done)
 
   switchToWindow: (windowName, done) ->
-    winston.test "@switchToWindow named: #{windowName}"
+    logger.test "@switchToWindow named: #{windowName}"
     @driver
       .window(windowName)
       .nodeify(done)
@@ -160,32 +165,32 @@ module.exports = class Jeeves
   #  JS alert box management
   ###
   acceptAlert: (done) ->
-    winston.test '@acceptAlert'
+    logger.test '@acceptAlert'
     @driver
       .acceptAlert()
       .nodeify(done)
 
   dismissAlert: (done) ->
-    winston.test '@dismissAlert'
+    logger.test '@dismissAlert'
     @driver
       .dismissAlert()
       .nodeify(done)
 
   getAlertText: (done) ->
-    winston.test '@getAlertText'
+    logger.test '@getAlertText'
     @driver
       .alertText()
       .nodeify(done)
 
   sendAlertKeys: (keys, done) ->
-    winston.test "@sendAlertKeys #{keys}"
+    logger.test "@sendAlertKeys #{keys}"
     @driver
       .alertKeys(keys)
       .nodeify(done)
 
   # Quit the browser and end the webdriver session
   quit: (done) ->
-    winston.test '@quit'
+    logger.test '@quit'
     @driver
       .quit()
       .nodeify(done)
@@ -194,14 +199,14 @@ module.exports = class Jeeves
   # @done callback gets (error, source)
   ###
   getFullBody: (done) ->
-    winston.test '@getFullBody'
+    logger.test '@getFullBody'
     @driver
       .source()
       .nodeify(done)
 
   # Take a screenshot, save it to a subdir of `@_screenshotDir`
   takeScreenshot: (subdir, filename, done) ->
-    winston.test '@takeScreenshot'
+    logger.test '@takeScreenshot'
     @driver
       .takeScreenshot()
       .nodeify (error, imgBuffer) ->
@@ -217,7 +222,7 @@ module.exports = class Jeeves
           fs.writeFile filePath, imgBuffer, 'base64', (error) ->
             if error then done error
             else
-              winston.test "Saved screenshot to #{filePath}"
+              logger.test "Saved screenshot to #{filePath}"
               done null, filePath
 
   ###
@@ -234,9 +239,9 @@ module.exports = class Jeeves
   #    if it's something huge it'll overload the callstack)
   ###
   executeClientScript: (fn, params..., done) ->
-    winston.test '@executeClientScript'
+    logger.test '@executeClientScript'
     @driver.execute fn, params, (error, results) =>
-      winston.debug "@executeClientScript results: #{JSON.stringify results}\n"
+      logger.debug "@executeClientScript results: #{JSON.stringify results}\n"
       if error then done error
       # treat returned 'error' string as an error.
       else if _.isString(results) and /^error/i.test(results) then done new Error results
@@ -249,9 +254,9 @@ module.exports = class Jeeves
   #    - order: fn(params..., callback)
   ###
   executeAsyncClientScript: (fn, params..., done) ->
-    winston.test '@executeAsyncClientScript'
+    logger.test '@executeAsyncClientScript'
     @driver.executeAsync fn, params, (error, results) =>
-      winston.debug "@executeAsyncClientScript results: #{JSON.stringify results}\n"
+      logger.debug "@executeAsyncClientScript results: #{JSON.stringify results}\n"
       if error then done error
       # treat returned 'error' string as an error.
       else if _.isString(results) and /^error/i.test(results) then done new Error results
@@ -259,7 +264,7 @@ module.exports = class Jeeves
 
   # Webdriver Element Comparison
   compareElements: (elem1, elem2, done) ->
-    winston.test '@compareElements'
+    logger.test '@compareElements'
     @driver
       .equalsElement(elem1, elem2)
       .nodeify(done)
@@ -274,7 +279,7 @@ module.exports = class Jeeves
   #####################################
 
   phantomUploadFile: (selector, filePath, done) ->
-    winston.test "@phantomUploadFile using: #{selector}\nFile: #{filePath}"
+    logger.test "@phantomUploadFile using: #{selector}\nFile: #{filePath}"
     if @driver.phantomUploadFile?
       @driver
         .phantomUploadFile(selector, filePath)
@@ -282,7 +287,7 @@ module.exports = class Jeeves
     else done new Error 'Phantom file uploads are not supported by your version of WD.'
 
   uploadFile: (filePath, done) ->
-    winston.test "@uploadFile #{filePath}"
+    logger.test "@uploadFile #{filePath}"
     @driver
       .uploadFile(filePath)
       .nodeify(done)
@@ -291,7 +296,7 @@ module.exports = class Jeeves
     # Buttons: 'left', 'middle', 'right'
     key = button.shift() or 'left'
     b = @MOUSE_KEYS[key]
-    winston.test "@mouseClick with button: #{key}"
+    logger.test "@mouseClick with button: #{key}"
     @driver
       .click(b)
       .nodeify(done)
@@ -300,38 +305,38 @@ module.exports = class Jeeves
     # Buttons: 'left', 'middle', 'right'
     key = button.shift() or 'left'
     b = @MOUSE_KEYS[key]
-    winston.test "@mouseDownUp with button: #{key}"
+    logger.test "@mouseDownUp with button: #{key}"
     @driver
       .buttonDown(b)
       .buttonUp(b)
       .nodeify(done)
 
   mouseMove: (x, y, done) ->
-    winston.test "@mouseMove to x:#{x}, y:#{y}"
+    logger.test "@mouseMove to x:#{x}, y:#{y}"
     @driver
       .moveTo(null, x, y)
       .nodeify(done)
 
   clearElement: (elem, done) ->
-    winston.test '@clearElement', elem
+    logger.test '@clearElement', elem
     elem
       .clear?()
       .nodeify(done)
 
   clickElement: (elem, done) =>
-    winston.test '@clickElement', elem
+    logger.test '@clickElement', elem
     elem
       .click?()
       .nodeify(done)
 
   typeKeys: (keys, done) ->
-    winston.test '@typeKeys', keys
+    logger.test '@typeKeys', keys
     @driver
       .keys(keys)
       .nodeify(done)
 
   forceElementVisible: (cssSelector, done) ->
-    winston.test "@forceElementVisible #{cssSelector}"
+    logger.test "@forceElementVisible #{cssSelector}"
     clientMakeVisible = (cssPath) ->
       $(cssPath).show()
       els = $(cssPath)
@@ -353,44 +358,44 @@ module.exports = class Jeeves
   #####################################
 
   hasClass: (elem, className, done)->
-    winston.test "@hasClass(#{elem}, #{className})"
+    logger.test "@hasClass(#{elem}, #{className})"
     elem
       .getAttribute('class')
       .nodeify (error, value) ->
         if error then return done error
         classes = value.split(' ')
-        winston.test "** classNames on #{elem}: #{classes}"
+        logger.test "** classNames on #{elem}: #{classes}"
         if className in classes
-          winston.warn 'elem has class!'
+          logger.warn 'elem has class!'
           return done null, true
         done null, false
 
   isChecked: (elem, done) ->
-    winston.test '@isChecked'
+    logger.test '@isChecked'
     @getAttributeValue elem, 'checked', done
 
   isSelected: (elem, done) ->
-    winston.test '@isSelected'
+    logger.test '@isSelected'
     elem
       .isSelected?()
       .nodeify(done)
 
   isDisplayed: (elem, done) ->
-    winston.test '@isDisplayed'
+    logger.test '@isDisplayed'
     elem
       .isDisplayed?()
       .nodeify(done)
 
   isTextPresent: (elem, searchText, done) ->
-    winston.test "@isTextPresent {elem: #{elem}, searchText: #{searchText}}"
+    logger.test "@isTextPresent {elem: #{elem}, searchText: #{searchText}}"
     elem
       .textPresent?(searchText)
       .nodeify (error, textFound) ->
-        winston.test "Text found: #{textFound}"
+        logger.test "Text found: #{textFound}"
         done error, textFound
 
   checkForElemWithProperText: (elemCssPath, elemText, done) ->
-    winston.test "@checkForElemWithProperText params:{elemCssPath: #{elemCssPath}, elemText: #{elemText}}"
+    logger.test "@checkForElemWithProperText params:{elemCssPath: #{elemCssPath}, elemText: #{elemText}}"
     elemExists = null
     @namedSteps
       checkForElementByCss: (next) =>
@@ -402,7 +407,7 @@ module.exports = class Jeeves
         if elemText?
           @isTextPresentByCss elemCssPath, elemText, next
     , (error, results) ->
-      winston.test '@checkForElemWithProperText results:', results
+      logger.test '@checkForElemWithProperText results:', results
       if _result = (results?.checkForElementByCss and results?.checkForTextByCss) then done null, _result
       else done error, _result
 
@@ -416,60 +421,60 @@ module.exports = class Jeeves
   #####################################
 
   getActiveElement: (done) ->
-    winston.test '@getActiveElement'
+    logger.test '@getActiveElement'
     @driver
       .active()
       .nodeify(done)
 
   getAttributeValue: (elem, attrName, done) ->
-    winston.test "@getAttributeValue #{attrName}"
+    logger.test "@getAttributeValue #{attrName}"
     elem
       .getAttribute?(attrName)
       .nodeify(done)
 
   getElementLocation: (elem, done) ->
-    winston.test '@getElementLocation'
+    logger.test '@getElementLocation'
     elem
       .getLocation?()
       .nodeify(done)
 
   getComputedCss: (elem, cssProperty, done) ->
-    winston.test '@getComputedCss'
+    logger.test '@getComputedCss'
     elem
       .getComputedCss?(cssProperty)
       .nodeify(done)
 
   getTagName: (elem, done) ->
-    winston.test '@getTagName'
+    logger.test '@getTagName'
     elem
       .getTagName?()
       .nodeify(done)
 
   getText: (elem, done) ->
-    winston.test '@getText on elem'
+    logger.test '@getText on elem'
     elem
       .text?()
       .nodeify(done)
 
   getInnerHtmlByCss: (cssSelector, done) ->
-    winston.test "@getInnerHtmlByCss on #{cssSelector}"
+    logger.test "@getInnerHtmlByCss on #{cssSelector}"
     clientInnerHtml = ->
       return $(arguments[0])[0].innerHTML
     @executeClientScript clientInnerHtml, cssSelector, done
 
   getCssCount: (cssSelector, done) ->
-    winston.test '@getCssCount'
+    logger.test '@getCssCount'
     async.waterfall [
       (next) =>
         @getElementsByCss cssSelector, next
       (elems, next) =>
         next null, elems.length
     ], (error, count) ->
-      winston.test "Count is: #{count}"
+      logger.test "Count is: #{count}"
       done error, count
 
   getTextOfElementsByCss: (cssSelector, done) ->
-    winston.test "@getTextOfElementsByCss #{cssSelector}"
+    logger.test "@getTextOfElementsByCss #{cssSelector}"
     clientGetTextFromElems = (cssPath) ->
       innards = []
       $(cssPath).each (i, el) -> innards.push $(el).text()
@@ -498,7 +503,7 @@ module.exports = class Jeeves
   #    @msg message on timeout error
   ###
   waitForSomething: (checkFn, options, done) ->
-    winston.test '@waitForSomething'
+    logger.test '@waitForSomething'
     _.defaults options,
       interval: 100
       timeout: 3000
@@ -510,7 +515,7 @@ module.exports = class Jeeves
     finish = _.once (error, result)->
       _finished = true
       clearTimeout finishTimeout
-      winston.test "@waitForSomething finished after #{checkCount} checks. Took #{Date.now() - startTime}ms"
+      logger.test "@waitForSomething finished after #{checkCount} checks. Took #{Date.now() - startTime}ms"
       if error then done error
       else done()
 
@@ -564,7 +569,7 @@ module.exports = class Jeeves
   ###
   waitForUrlToChange: (expectedUrl, matches = true, options..., done) ->
     toFrom = if matches then 'to' else 'from'
-    winston.test "@waitForUrlToChange #{toFrom} #{expectedUrl}"
+    logger.test "@waitForUrlToChange #{toFrom} #{expectedUrl}"
 
     options = options.shift() or {}
     _.defaults options,
@@ -586,7 +591,7 @@ module.exports = class Jeeves
       interval: options.interval
 
     , (error) =>
-      winston.test '-- waitForUrlToChange done. Attempting to get url', [ expectedUrl, error?.message ? 'no error' ]
+      logger.test '-- waitForUrlToChange done. Attempting to get url', [ expectedUrl, error?.message ? 'no error' ]
       if error then return done error
       # pass back the new URL
       @getCurrentUrl done
@@ -600,7 +605,7 @@ module.exports = class Jeeves
   # @done callback gets the el. (no reason to run 2nd call to get it when we know it exists.)
   ###
   waitForAttributeByCss: (cssSelector, attr, attrValue, done) ->
-    winston.test "@waitForAttributeByCss {cssSelector: #{cssSelector}\nattr: #{attr}\nattrValue: #{attrValue}}"
+    logger.test "@waitForAttributeByCss {cssSelector: #{cssSelector}\nattr: #{attr}\nattrValue: #{attrValue}}"
     elemAttributeValue = null
 
     @waitForSomething (callback) =>
@@ -617,14 +622,14 @@ module.exports = class Jeeves
       interval: LONG_INTERVAL
     , (error) ->
       if error then return done error
-      winston.test "element '#{cssSelector}' has attribute #{attr} with value #{elemAttributeValue}"
+      logger.test "element '#{cssSelector}' has attribute #{attr} with value #{elemAttributeValue}"
       done null, elemAttributeValue
 
   ###
   # this method has benefit when waiting for text that isn't visible
   ###
   waitForInnerHtmlByCss: (selectorValue, regex, options..., done) =>
-    winston.test "@waitForInnerHtmlByCss using { selectorValue: #{selectorValue}\n regex: #{regex} }"
+    logger.test "@waitForInnerHtmlByCss using { selectorValue: #{selectorValue}\n regex: #{regex} }"
     done = _.once done
     options = options.shift() or {}
     _.defaults options,
@@ -637,7 +642,7 @@ module.exports = class Jeeves
 
       @waitForSomething (callback) =>
         @getInnerHtmlByCss selectorValue, (error, html) ->
-          winston.test '    html is: ' + (html ? '[empty]')
+          logger.test '    html is: ' + (html ? '[empty]')
           if error then return callback error
           htmlToReturn = html
           unless html then return callback null, false
@@ -647,7 +652,7 @@ module.exports = class Jeeves
         timeout: options.timeout
         interval: options.interval
       , (error) ->
-        winston.test "done waiting for regex to match #{error ? 'no error'}"
+        logger.test "done waiting for regex to match #{error ? 'no error'}"
         if error then return done error
         done null, htmlToReturn
 
@@ -659,7 +664,7 @@ module.exports = class Jeeves
 
   # Waits for condition to be true (polling within wd client)
   waitForCondition: (conditionExpr, timeout = 5, pollFreq = 300, done) ->
-    winston.test '@waitForCondition'
+    logger.test '@waitForCondition'
     timeout = timeout * 1000
     condtion = asserters.jsCondition conditionExpr, true
     @driver
@@ -668,7 +673,7 @@ module.exports = class Jeeves
 
   # Waits for condition to be true (async script polling within browser)
   waitForConditionInBrowser: (conditionExpr, timeout = 5, pollFreq = 300, done) ->
-    winston.test '@waitForConditionInBrowser'
+    logger.test '@waitForConditionInBrowser'
     timeout = timeout * 1000
     @driver
       .waitForConditionInBrowser(conditionExpr, timeout, pollFreq)
@@ -691,7 +696,7 @@ module.exports = class Jeeves
   #                   it actually bases the endpointPosition off the position of this element
   ###
   dragElement: (startElement, endpointPosition, endpointElement, done) ->
-    winston.test "@dragElement #{endpointPosition}"
+    logger.test "@dragElement #{endpointPosition}"
     @driver
       .moveTo(startElement, undefined, undefined)
       .buttonDown(0)
@@ -704,7 +709,7 @@ module.exports = class Jeeves
   # Similar to `dragElement`, but simulates a mouse click to select then another to drop
   ###
   clickAndStamp: (startElement, endpointPosition, endpointElement, done) ->
-    winston.test "@clickAndStamp #{endpointPosition}"
+    logger.test "@clickAndStamp #{endpointPosition}"
     @driver
       .moveTo(startElement, undefined, undefined)
       .buttonDown(0)
@@ -722,7 +727,7 @@ module.exports = class Jeeves
   # Doesn't work and is very fragile. Needs tests
   # Leaving this to maybe fix later.
   ieDragAndDrop: (startElement, endpointPosition, endpointElement, done) ->
-    winston.test "@ieDragAndDrop #{endpointPosition}"
+    logger.test "@ieDragAndDrop #{endpointPosition}"
     elemPos = pageX = pageY = elemId = null
     endPos = _.defaults endpointPosition
     @namedSteps
@@ -788,10 +793,10 @@ _.each _elementFuncTypes, (type)->
   #   @getElementByCss = (selectorValue, done) -> done(error, elem)
   ###
   Jeeves::['getElement' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@getElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@getElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["element#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elem) ->
-        winston.test "got the elem: #{elem}"
+        logger.test "got the elem: #{elem}"
         done error, elem
 
   ###
@@ -807,10 +812,10 @@ _.each _elementFuncTypes, (type)->
   #   @getElemIfExistsByCss = (selectorValue, done) -> done(error, elemOrUndefined)
   ###
   Jeeves::['getElemIfExists' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@#{"element#{_elFuncSuffix type}IfExists"} using selectorValue: #{selectorValue}"
+    logger.test "@#{"element#{_elFuncSuffix type}IfExists"} using selectorValue: #{selectorValue}"
     @driver["element#{_elFuncSuffix type}IfExists"](selectorValue)
       .nodeify (error, elem) ->
-        winston.test "got the elem: #{elem}"
+        logger.test "got the elem: #{elem}"
         done error, elem
 
   ###
@@ -826,10 +831,10 @@ _.each _elementFuncTypes, (type)->
   #   @getElementsByCss = (selectorValue, done) -> done(error, elems)
   ###
   Jeeves::['getElements' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@getElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@getElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["elements#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elems) ->
-        winston.test "got the elems: #{elems}"
+        logger.test "got the elems: #{elems}"
         done error, elems
 
   ###
@@ -845,10 +850,10 @@ _.each _elementFuncTypes, (type)->
   #   @findElementOrNullByCss = (selectorValue, done) -> done(error, elemOrNull)
   ###
   Jeeves::['findElementOrNull' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@findElementOrNull#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@findElementOrNull#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["element#{_elFuncSuffix type}OrNull"](selectorValue)
       .nodeify (error, elem) ->
-        winston.test "got the elem?: #{elem}"
+        logger.test "got the elem?: #{elem}"
         done error, elem
 
   ###
@@ -863,10 +868,10 @@ _.each _elementFuncTypes, (type)->
   #   @getChildElementByCss = (elem, selectorValue, done) -> done(error, elem)
   ###
   Jeeves::['getChildElement' + _elFuncSuffix type] = (elem, selectorValue, done) ->
-    winston.test "@getChildElement#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
+    logger.test "@getChildElement#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
     elem["element#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elem) ->
-        winston.test "got the child elem: #{elem}"
+        logger.test "got the child elem: #{elem}"
         done error, elem
 
   ###
@@ -881,10 +886,10 @@ _.each _elementFuncTypes, (type)->
   #   @getChildElementsByCss = (elem, selectorValue, done) -> done(error, elems)
   ###
   Jeeves::['getChildElements' + _elFuncSuffix type] = (elem, selectorValue, done) ->
-    winston.test "@getChildElements#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
+    logger.test "@getChildElements#{_elFuncSuffix type} in parent #{elem?.value} using selector '#{selectorValue}'"
     elem["elements#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, elems) ->
-        winston.test "got the elems: #{elems}"
+        logger.test "got the elems: #{elems}"
         done error, elems
 
   #####################################
@@ -908,10 +913,10 @@ _.each _elementFuncTypes, (type)->
   #   @clickElementByCss = (selectorValue, done) -> done(error)
   ###
   Jeeves::['clickElement' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test 'Element found! Attempting to click...'
+      logger.test 'Element found! Attempting to click...'
       elem
         .click()
         .nodeify(done)
@@ -928,10 +933,10 @@ _.each _elementFuncTypes, (type)->
   #   @submitByCss = (selectorValue, done) -> done(error)
   ###
   Jeeves::['submit' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@submit#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@submit#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test 'Element found! Attempting to submit form...'
+      logger.test 'Element found! Attempting to submit form...'
       elem
         .submit()
         .nodeify(done)
@@ -948,10 +953,10 @@ _.each _elementFuncTypes, (type)->
   #   @sendTextToElementByCss = (selectorValue, text, done) -> done(error)
   ###
   Jeeves::['sendTextToElement' + _elFuncSuffix type] = (selectorValue, text, done) ->
-    winston.test "@sendTextToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@sendTextToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test "Element found! Attempting to type: #{text}"
+      logger.test "Element found! Attempting to type: #{text}"
       elem
         .sendKeys(text)
         .nodeify(done)
@@ -968,14 +973,14 @@ _.each _elementFuncTypes, (type)->
   #   @clearAndSendTextByCss = (selectorValue, text, done) -> done(error)
   ###
   Jeeves::['clearAndSendText' + _elFuncSuffix type] = (selectorValue, text, done) ->
-    winston.test "@clearAndSendText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@clearAndSendText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test 'Element found! Attempting to clear...'
+      logger.test 'Element found! Attempting to clear...'
       elem
         .clear()
         .then ->
-          winston.test "Element cleared! Attempting to type: #{text}"
+          logger.test "Element cleared! Attempting to type: #{text}"
         .type(text)
         .nodeify(done)
 
@@ -992,10 +997,10 @@ _.each _elementFuncTypes, (type)->
   #   @mouseToElementByCss = (selectorValue, xOffset, yOffset, done) -> done(error)
   ###
   Jeeves::['mouseToElement' + _elFuncSuffix type] = (selectorValue, xOffset = 0, yOffset = 0, done) ->
-    winston.test "@mouseToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@mouseToElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test "Element found! Attempting to move mouse to element...offset( x: #{xOffset}, y: #{yOffset} )"
+      logger.test "Element found! Attempting to move mouse to element...offset( x: #{xOffset}, y: #{yOffset} )"
       elem
         .moveTo(xOffset, yOffset)
         .nodeify(done)
@@ -1013,12 +1018,12 @@ _.each _elementFuncTypes, (type)->
   #   @doubleClickElementByCss = (selectorValue, offsets..., done) -> done(error)
   ###
   Jeeves::['doubleClickElement' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
-    winston.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     xOffset = offsets.shift() ? 0
     yOffset = offsets.shift() ? 0
     @["mouseToElement#{_elFuncSuffix type}"] selectorValue, xOffset, yOffset, (error) =>
       if error then return done error
-      winston.test 'Mouse in position! Attempting to double-click...'
+      logger.test 'Mouse in position! Attempting to double-click...'
       @driver
         .doubleclick()
         .nodeify(done)
@@ -1036,12 +1041,12 @@ _.each _elementFuncTypes, (type)->
   #   @mouseDownUpByCss = (selectorValue, offsets..., done) -> done(error)
   ###
   Jeeves::['mouseDownUp' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
-    winston.test "@mouseDownUp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@mouseDownUp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     xOffset = offsets.shift() ? 0
     yOffset = offsets.shift() ? 0
     @["mouseToElement#{_elFuncSuffix type}"] selectorValue, xOffset, yOffset, (error, elem) =>
       if error then return done error
-      winston.test 'Mouse in position! Attempting to mouseDown then mouseUp using left mouse button...'
+      logger.test 'Mouse in position! Attempting to mouseDown then mouseUp using left mouse button...'
       @driver
         .buttonDown(0)
         .buttonUp(0)
@@ -1059,12 +1064,12 @@ _.each _elementFuncTypes, (type)->
   #   @mouseClickByCss = (selectorValue, offsets..., done) -> done(error)
   ###
   Jeeves::['mouseClick' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
-    winston.test "@mouseClick#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@mouseClick#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     xOffset = offsets.shift() ? 0
     yOffset = offsets.shift() ? 0
     @["mouseToElement#{_elFuncSuffix type}"] selectorValue, xOffset, yOffset, (error, elem) =>
       if error then return done error
-      winston.test 'Mouse in position! Attempting to click using left mouse button...'
+      logger.test 'Mouse in position! Attempting to click using left mouse button...'
       @driver
         .click(0)
         .nodeify(done)
@@ -1090,14 +1095,14 @@ _.each _elementFuncTypes, (type)->
   #   @isSelectedByCss = (selectorValue, done) -> done(error, boolean)
   ###
   Jeeves::['isSelected' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@isSelected#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@isSelected#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test 'Element found! Attempting to check if selected...'
+      logger.test 'Element found! Attempting to check if selected...'
       elem
         .isSelected()
         .nodeify (error, selected) ->
-          winston.test "isSelected result: #{selected}"
+          logger.test "isSelected result: #{selected}"
           done error, selected
 
   ###
@@ -1112,14 +1117,14 @@ _.each _elementFuncTypes, (type)->
   #   @isEnabledByCss = (selectorValue, done) -> done(error, boolean)
   ###
   Jeeves::['isEnabled' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@isEnabled#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@isEnabled#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test 'Element found! Attempting to check if enabled...'
+      logger.test 'Element found! Attempting to check if enabled...'
       elem
         .isEnabled()
         .nodeify (error, enabled) ->
-          winston.test "isEnabled result: #{enabled}"
+          logger.test "isEnabled result: #{enabled}"
           done error, enabled
 
   ###
@@ -1134,18 +1139,18 @@ _.each _elementFuncTypes, (type)->
   #   @isDisplayedByCss = (selectorValue, done) -> done(error, boolean)
   ###
   Jeeves::['isDisplayed' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@isDisplayed#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@isDisplayed#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if not elem and error?.message.match /Error response status: 7/
         # the element doesn't exist, therefor it must not be displayed - so this shouldn't be an error
-        winston.test 'Element not found'
+        logger.test 'Element not found'
         return done null, false
       else if error then return done error
-      winston.test 'Element found! Attempting to check if displayed...'
+      logger.test 'Element found! Attempting to check if displayed...'
       elem
         .isDisplayed()
         .nodeify (error, displayed) ->
-          winston.test "isDisplayed result: #{displayed}"
+          logger.test "isDisplayed result: #{displayed}"
           done error, displayed
 
   ###
@@ -1160,12 +1165,12 @@ _.each _elementFuncTypes, (type)->
   #   @isCheckedByCss = (selectorValue, done) -> done(error, boolean)
   ###
   Jeeves::['isChecked' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@isChecked#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@isChecked#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) =>
       if error then return done error
-      winston.test 'Element found! Attempting to check if checked...'
+      logger.test 'Element found! Attempting to check if checked...'
       @getAttributeValue elem, 'checked', (error, checked) ->
-        winston.test "isChecked result: #{!!checked}"
+        logger.test "isChecked result: #{!!checked}"
         done error, !!checked
 
   ###
@@ -1180,14 +1185,14 @@ _.each _elementFuncTypes, (type)->
   #   @isTextPresentByCss = (selectorValue, searchText, done) -> done(error, boolean)
   ###
   Jeeves::['isTextPresent' + _elFuncSuffix type] = (selectorValue, searchText, done) ->
-    winston.test "@isTextPresent#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@isTextPresent#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test "Element found! Attempting to check for text: #{searchText}"
+      logger.test "Element found! Attempting to check for text: #{searchText}"
       elem
         .textPresent(searchText)
         .nodeify (error, textFound) ->
-          winston.test "Text found: #{textFound}"
+          logger.test "Text found: #{textFound}"
           done error, textFound
 
   ###
@@ -1202,10 +1207,10 @@ _.each _elementFuncTypes, (type)->
   #   @checkForElementByCss = (selectorValue, done) -> done(error, boolean)
   ###
   Jeeves::['checkForElement' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@checkForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@checkForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @driver["hasElement#{_elFuncSuffix type}"](selectorValue)
       .nodeify (error, exists) =>
-        winston.test "@checkForElement#{_elFuncSuffix type} result: #{exists}"
+        logger.test "@checkForElement#{_elFuncSuffix type} result: #{exists}"
         done error, exists
 
   #####################################
@@ -1229,14 +1234,14 @@ _.each _elementFuncTypes, (type)->
   #   @getTextByCss = (selectorValue, opts..., done) -> done(error, text)
   ###
   Jeeves::['getText' + _elFuncSuffix type] = (selectorValue, opts..., done) ->
-    winston.test "@getText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@getText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     callCount = opts.shift() or 1
     # @todo: @ask: @review: is this error check still needed since it uses promises now?
     if callCount > 2
       return done new Error 'getText() is in a loop of Error response status: 10'
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) =>
       if error then return done error
-      winston.test 'Element found! Attempting to get text...'
+      logger.test 'Element found! Attempting to get text...'
       elem
         .text()
         .nodeify (error, innerText) =>
@@ -1256,14 +1261,14 @@ _.each _elementFuncTypes, (type)->
   #   @getAttributeValueByCss = (selectorValue, attrName, done) -> done(error, attrValue)
   ###
   Jeeves::['getAttributeValue' + _elFuncSuffix type] = (selectorValue, attrName, done) ->
-    winston.test "@getAttributeValue#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@getAttributeValue#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test "Element found! Attempting to get attribute(#{attrName})..."
+      logger.test "Element found! Attempting to get attribute(#{attrName})..."
       elem
         .getAttribute(attrName)
         .nodeify (error, attrVal) ->
-          winston.test "got attribute value: #{attrVal}"
+          logger.test "got attribute value: #{attrVal}"
           done error, attrVal
 
   ###
@@ -1278,14 +1283,14 @@ _.each _elementFuncTypes, (type)->
   #   @getComputedCssPropByCss = (selectorValue, cssProp, done) -> done(error, computedCss)
   ###
   Jeeves::['getComputedCssProp' + _elFuncSuffix type] = (selectorValue, cssProp, done) ->
-    winston.test "@getComputedCssProp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@getComputedCssProp#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test "Element found! Attempting to get computed css prop(#{cssProp})..."
+      logger.test "Element found! Attempting to get computed css prop(#{cssProp})..."
       elem
         .getComputedCss(cssProp)
         .nodeify (error, cssPropVal) ->
-          winston.test "got computed css property: #{cssPropVal}"
+          logger.test "got computed css property: #{cssPropVal}"
           done error, cssPropVal
 
   ###
@@ -1300,14 +1305,14 @@ _.each _elementFuncTypes, (type)->
   #   @getSizeByCss = (value, done) -> done(error, elemSize)
   ###
   Jeeves::['getSize' + _elFuncSuffix type] = (value, done) ->
-    winston.test "@getSize#{_elFuncSuffix type} using #{value}"
+    logger.test "@getSize#{_elFuncSuffix type} using #{value}"
     @["getElement#{_elFuncSuffix type}"] value, (error, elem) ->
       if error then return done error
-      winston.test 'Element found! Attempting to get elem size...'
+      logger.test 'Element found! Attempting to get elem size...'
       elem
         .getSize()
         .nodeify (error, elemSize) ->
-          winston.test "got elem size: #{elemSize}"
+          logger.test "got elem size: #{elemSize}"
           done error, elemSize
 
   ###
@@ -1322,14 +1327,14 @@ _.each _elementFuncTypes, (type)->
   #   @getElemLocationByCss = (selectorValue, done) -> done(error, elemLocation)
   ###
   Jeeves::['getElemLocation' + _elFuncSuffix type] = (selectorValue, done) ->
-    winston.test "@getElemLocation#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@getElemLocation#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
       if error then return done error
-      winston.test 'Element found! Attempting to get location...'
+      logger.test 'Element found! Attempting to get location...'
       elem
         .getElementLocation()
         .nodeify (error, elemLoc) ->
-          winston.test "got elem location: #{elemLoc}"
+          logger.test "got elem location: #{elemLoc}"
           done error, elemLoc
 
   #####################################
@@ -1353,14 +1358,14 @@ _.each _elementFuncTypes, (type)->
   #   @waitForElementByCss = (selectorValue, options..., done) -> done(error)
   ###
   Jeeves::['waitForElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, SHORT_INTERVAL)
       .nodeify (error) ->
-        winston.test 'Waiting complete! Element exists on page'
+        logger.test 'Waiting complete! Element exists on page'
         done error
 
   ###
@@ -1375,14 +1380,14 @@ _.each _elementFuncTypes, (type)->
   #   @waitForVisibleElementByCss = (selectorValue, options..., done) -> done(error)
   ###
   Jeeves::['waitForVisibleElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForVisibleElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForVisibleElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.isDisplayed, timeout, interval)
       .nodeify (error) ->
-        winston.test 'Waiting complete! Element is visible'
+        logger.test 'Waiting complete! Element is visible'
         done error
 
   ###
@@ -1397,14 +1402,14 @@ _.each _elementFuncTypes, (type)->
   #   @waitForElementToHideByCss = (selectorValue, options..., done) -> done(error)
   ###
   Jeeves::['waitForElementToHide' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForElementToHide#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForElementToHide#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.isNotDisplayed, timeout, interval)
       .nodeify (error) ->
-        winston.test 'Waiting complete! Element is hidden'
+        logger.test 'Waiting complete! Element is hidden'
         done error
 
   ###
@@ -1419,7 +1424,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndGetElementByCss = (selectorValue, options..., done) -> done(error, elem)
   ###
   Jeeves::['waitForAndGetElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForAndGetElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForAndGetElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
@@ -1427,7 +1432,7 @@ _.each _elementFuncTypes, (type)->
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, interval)
       .nodeify (error) =>
         if error then return done error
-        winston.test 'Waiting complete! Attempting to get & return element...'
+        logger.test 'Waiting complete! Attempting to get & return element...'
         @["getElement#{_elFuncSuffix type}"] selectorValue, done
 
   ###
@@ -1442,7 +1447,7 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndGetElementsByCss = (selectorValue, options..., done) -> done(error, elems)
   ###
   Jeeves::['waitForAndGetElements' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForAndGetElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForAndGetElements#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
@@ -1450,7 +1455,7 @@ _.each _elementFuncTypes, (type)->
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, interval)
       .nodeify (error) =>
         if error then return done error
-        winston.test 'Waiting complete! Attempting to get & return element...'
+        logger.test 'Waiting complete! Attempting to get & return element...'
         @["getElements#{_elFuncSuffix type}"] selectorValue, done
 
   ###
@@ -1465,14 +1470,14 @@ _.each _elementFuncTypes, (type)->
   #   @waitForTextByCss = (selectorValue, options..., done) -> done(error)
   ###
   Jeeves::['waitForText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.nonEmptyText, timeout, interval)
       .nodeify (error) =>
-        winston.test 'Waiting complete, element text is not empty.'
+        logger.test 'Waiting complete, element text is not empty.'
         done error
 
   ###
@@ -1488,18 +1493,18 @@ _.each _elementFuncTypes, (type)->
   # @todo: refactor to use asserters.textInclude()
   ###
   Jeeves::['waitForElementText' + _elFuncSuffix type] = (selectorValue, text, options..., done) ->
-    winston.test "@waitForElementText#{_elFuncSuffix type} using selectorValue: #{selectorValue}, expected text: #{text}"
+    logger.test "@waitForElementText#{_elFuncSuffix type} using selectorValue: #{selectorValue}, expected text: #{text}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
       if error then return done error
-      winston.test "Element found! Attempting to check text for #{text}..."
+      logger.test "Element found! Attempting to check text for #{text}..."
       elem
         .textPresent(text)
         .nodeify (error, present) =>
-          winston.test "text present? => #{present}"
+          logger.test "text present? => #{present}"
           done error, present
 
   ###
@@ -1514,18 +1519,18 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndGetTextByCss = (selectorValue, options..., done) -> done(error, text)
   ###
   Jeeves::['waitForAndGetText' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForAndGetText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForAndGetText#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
       if error then return done error
-      winston.test 'Element found! Attempting to get text...'
+      logger.test 'Element found! Attempting to get text...'
       elem
         .text()
         .nodeify (error, text) =>
-          winston.test "Got text? => #{text}"
+          logger.test "Got text? => #{text}"
           done error, text
 
   ###
@@ -1540,14 +1545,14 @@ _.each _elementFuncTypes, (type)->
   #   @waitForAndClickElementByCss = (selectorValue, options..., done) -> done(error)
   ###
   Jeeves::['waitForAndClickElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
-    winston.test "@waitForAndClickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@waitForAndClickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
       if error then return done error
-      winston.test 'Element found! Attempting to click...'
+      logger.test 'Element found! Attempting to click...'
       elem
         .click()
         .nodeify(done)
