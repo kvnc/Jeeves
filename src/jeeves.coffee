@@ -4,8 +4,7 @@
 ###
 
 webdriver = require 'wd'
-asserters = webdriver.asserters
-winston = require 'winston'
+{asserters} = webdriver
 async = require 'async'
 _ = require 'lodash'
 

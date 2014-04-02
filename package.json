@@ -18,15 +18,21 @@
     "driverwrapper",
     "jeeves",
     "selenium",
-    "coffeescript"
+    "coffeescript",
+    "coffee",
+    "json wire protocol",
+    "automation",
+    "browser automation",
+    "testing",
+    "test",
+    "mocha"
   ],
   "author": "Whoaa512",
   "license": "MIT",
   "dependencies": {
     "async": "^0.6.2",
     "ensureDir": "^1.0.6",
-    "lodash": "^2.4.1",
-    "winston": "^0.7.3"
+    "lodash": "^2.4.1"
   },
   "devDependencies": {
     "coffee-script": "^1.7.1",
