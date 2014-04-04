@@ -1337,6 +1337,28 @@ _.each _elementFuncTypes, (type)->
           logger.test "got elem location: #{elemLoc}"
           done error, elemLoc
 
+  ###
+  #   @getElemLocationInViewByClassName = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewByCssSelector = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewById = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewByName = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewByLinkText = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewByPartialLinkText = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewByTagName = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewByXPath = (selectorValue, done) -> done(error, elemLocation)
+  #   @getElemLocationInViewByCss = (selectorValue, done) -> done(error, elemLocation)
+  ###
+  Jeeves::['getElemLocationInView' + _elFuncSuffix type] = (selectorValue, done) ->
+    logger.test "@getElemLocationInView#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) ->
+      if error then return done error
+      logger.test 'Element found! Attempting to get location in view...'
+      elem
+        .getLocationInView()
+        .nodeify (error, elemLoc) ->
+          logger.test "got elem location in view: #{elemLoc}"
+          done error, elemLoc
+
   #####################################
   #   /Getter Methods
   #####################################
