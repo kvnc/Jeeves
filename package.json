@@ -1,6 +1,6 @@
 {
   "name": "jeeves",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Selenium RemoteWebDriver abstraction layer built on the 'wd' npm module",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.docusignhq.com/martini/jeeves"
+    "url": "https://github.com/DocuSignDev/jeeves"
   },
   "keywords": [
     "wd",
