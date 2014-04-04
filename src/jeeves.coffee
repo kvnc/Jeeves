@@ -1332,7 +1332,7 @@ _.each _elementFuncTypes, (type)->
       if error then return done error
       logger.test 'Element found! Attempting to get location...'
       elem
-        .getElementLocation()
+        .getLocation()
         .nodeify (error, elemLoc) ->
           logger.test "got elem location: #{elemLoc}"
           done error, elemLoc
