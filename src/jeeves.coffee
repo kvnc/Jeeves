@@ -209,7 +209,7 @@ module.exports = class Jeeves
     logger.test '@takeScreenshot'
     @driver
       .takeScreenshot()
-      .nodeify (error, imgBuffer) ->
+      .nodeify (error, imgBuffer) =>
         if error then return done error
 
         ensureDir = require 'ensureDir'
