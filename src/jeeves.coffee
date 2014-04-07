@@ -696,7 +696,7 @@ module.exports = class Jeeves
   #                   it actually bases the endpointPosition off the position of this element
   ###
   dragElement: (startElement, endpointPosition, endpointElement, done) ->
-    logger.test "@dragElement #{endpointPosition}"
+    logger.test "@dragElement ", endpointPosition
     @driver
       .moveTo(startElement, undefined, undefined)
       .buttonDown(0)
@@ -709,7 +709,7 @@ module.exports = class Jeeves
   # Similar to `dragElement`, but simulates a mouse click to select then another to drop
   ###
   clickAndStamp: (startElement, endpointPosition, endpointElement, done) ->
-    logger.test "@clickAndStamp #{endpointPosition}"
+    logger.test "@clickAndStamp ", endpointPosition
     @driver
       .moveTo(startElement, undefined, undefined)
       .buttonDown(0)
@@ -727,7 +727,7 @@ module.exports = class Jeeves
   # Doesn't work and is very fragile. Needs tests
   # Leaving this to maybe fix later.
   ieDragAndDrop: (startElement, endpointPosition, endpointElement, done) ->
-    logger.test "@ieDragAndDrop #{endpointPosition}"
+    logger.test "@ieDragAndDrop ", endpointPosition
     elemPos = pageX = pageY = elemId = null
     endPos = _.defaults endpointPosition
     @namedSteps
@@ -1334,7 +1334,7 @@ _.each _elementFuncTypes, (type)->
       elem
         .getLocation()
         .nodeify (error, elemLoc) ->
-          logger.test "got elem location: #{elemLoc}"
+          logger.test "got elem location: ", elemLoc
           done error, elemLoc
 
   ###
@@ -1356,7 +1356,7 @@ _.each _elementFuncTypes, (type)->
       elem
         .getLocationInView()
         .nodeify (error, elemLoc) ->
-          logger.test "got elem location in view: #{elemLoc}"
+          logger.test "got elem location in view: ", elemLoc
           done error, elemLoc
 
   #####################################
