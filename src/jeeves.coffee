@@ -505,7 +505,7 @@ module.exports = class Jeeves
   waitForSomething: (checkFn, options, done) ->
     logger.test '@waitForSomething'
     _.defaults options,
-      interval: 100
+      interval: 500
       timeout: 3000
       msg: '[something]'
 
