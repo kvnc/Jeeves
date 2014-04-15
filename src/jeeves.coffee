@@ -406,7 +406,7 @@ module.exports = class Jeeves
         next null, elem?
       checkForTextByCss: (next) =>
         unless elem?
-          winston.test 'Element did not exist. Can\'t check for text.'
+          logger.test 'Element did not exist. Can\'t check for text.'
           next()
         else
           @isTextPresent elem, elemText, next
