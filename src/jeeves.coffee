@@ -396,19 +396,26 @@ module.exports = class Jeeves
 
   checkForElemWithProperText: (elemCssPath, elemText, done) ->
     logger.test "@checkForElemWithProperText params:{elemCssPath: #{elemCssPath}, elemText: #{elemText}}"
-    elemExists = null
+    elem = null
     @namedSteps
-      checkForElementByCss: (next) =>
-        @checkForElementByCss elemCssPath, (error, _exists) =>
-          elemExists = _exists
-          next error, elemExists
+      getElementByCss: (next) =>
+        @findElementOrNullByCss elemCssPath, (error, _elem) =>
+          elem = _elem
+          next error
+      checkForElement: (next) =>
+        # @checkForElementByCss elemCssPath, (error, _exists) =>
+        #   elemExists = _exists
+        next error, elem?
       checkForTextByCss: (next) =>
-        unless elemExists then next()
-        if elemText?
-          @isTextPresentByCss elemCssPath, elemText, next
+        unless elem?
+          winston.test 'Element did not exist. Can\'t check for text.'
+          next()
+        else
+          @isTextPresent elem, elemText, next
     , (error, results) ->
       logger.test '@checkForElemWithProperText results:', results
-      if _result = (results?.checkForElementByCss and results?.checkForTextByCss) then done null, _result
+      _result = (results?.checkForElement and results?.checkForTextByCss)
+      if _result? then done null, _result
       else done error, _result
 
   #####################################
