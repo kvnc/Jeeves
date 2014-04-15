@@ -403,9 +403,7 @@ module.exports = class Jeeves
           elem = _elem
           next error
       checkForElement: (next) =>
-        # @checkForElementByCss elemCssPath, (error, _exists) =>
-        #   elemExists = _exists
-        next error, elem?
+        next null, elem?
       checkForTextByCss: (next) =>
         unless elem?
           winston.test 'Element did not exist. Can\'t check for text.'
