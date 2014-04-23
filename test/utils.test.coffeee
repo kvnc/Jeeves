@@ -71,7 +71,7 @@ describe 'Jeeves utils', ->
           , (error, results) ->
             stepsRun.push "done"
 
-            should (error instanceof Error), 'got the expected error'
+            should(error).be.an.instanceof Error
 
             should.deepEqual results, { stepOne: 1, stepTwo: undefined }
             should.deepEqual stepsRun, [1, 2, 'done']
