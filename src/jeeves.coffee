@@ -1453,14 +1453,15 @@ _.each _elementFuncTypes, (type)->
   Jeeves::['waitForAndGetElement' + _elFuncSuffix type] = (selectorValue, options..., done) ->
     logger.test "@waitForAndGetElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     options = options.shift() or {}
-    {timeout, interval} = options
+    {timeout, interval, visibleElem} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
-    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, interval)
-      .nodeify (error) =>
-        if error then return done error
-        logger.test 'Waiting complete! Attempting to get & return element...'
-        @["getElement#{_elFuncSuffix type}"] selectorValue, done
+    if visibleElem is true then waitForMethod = "waitForVisibleElement#{_elFuncSuffix type}"
+    else waitForMethod = "waitForElement#{_elFuncSuffix type}"
+    @[waitForMethod] selectorValue, {timeout, interval}, (error) =>
+      if error then return done error
+      logger.test 'Waiting complete! Attempting to get & return element...'
+      @["getElement#{_elFuncSuffix type}"] selectorValue, done
 
   ###
   #   @waitForAndGetElementsByClassName = (selectorValue, options..., done) -> done(error, elems)
