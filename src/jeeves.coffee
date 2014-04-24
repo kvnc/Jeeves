@@ -1578,7 +1578,7 @@ _.each _elementFuncTypes, (type)->
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
-    @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
+    @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval, visibleElem:true}, (error, elem) =>
       if error then return done error
       logger.test 'Element found! Attempting to click...'
       elem
