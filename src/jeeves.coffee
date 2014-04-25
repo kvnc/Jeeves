@@ -23,7 +23,7 @@ LONG_INTERVAL = 500
 module.exports = class Jeeves
 
   SPECIAL_KEYS: webdriver.SPECIAL_KEYS
-
+  _utils: {}
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
 
   constructor: (@driver, options = {}) ->
@@ -781,10 +781,10 @@ module.exports = class Jeeves
 ## e.g. do__X__ByCss , do__X__ById, etc... functions
 ##
 
-_elementFuncTypes = ['class name','css selector','id','name','link text','partial link text','tag name','xpath','css']
+Jeeves::_utils._elementFuncTypes = _elementFuncTypes = ['class name','css selector','id','name','link text','partial link text','tag name','xpath','css']
 
 # convert to type to something like ById, ByCssSelector, etc...
-_elFuncSuffix = (type) ->
+Jeeves::_utils._elFuncSuffix = _elFuncSuffix = (type) ->
   res = (" by " + type).replace /(\s[a-z])/g, ($1)-> $1.toUpperCase().replace " ", ""
   res.replace "Xpath", "XPath"
 
