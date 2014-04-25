@@ -292,6 +292,15 @@ module.exports = class Jeeves
       .uploadFile(filePath)
       .nodeify(done)
 
+  jsMouseClick: (cssSelector, button..., done) ->
+    # Buttons: 'left', 'middle', 'right'
+    key = button.shift() or 'left'
+    b = @MOUSE_KEYS[key]
+    logger.test "@jsMouseClick with button: #{key}"
+    jqueryClick = ->
+      return $(arguments[0])[0].click()
+    @executeClientScript jqueryClick, cssSelector, done
+
   mouseClick: (button..., done) ->
     # Buttons: 'left', 'middle', 'right'
     key = button.shift() or 'left'
