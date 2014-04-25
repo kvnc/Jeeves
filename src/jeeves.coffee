@@ -1032,7 +1032,7 @@ _.each _elementFuncTypes, (type)->
   #   @doubleClickElementByCss = (selectorValue, offsets..., done) -> done(error)
   ###
   Jeeves::['doubleClickElement' + _elFuncSuffix type] = (selectorValue, offsets..., done) ->
-    logger.test "@clickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
+    logger.test "@doubleClickElement#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
     xOffset = offsets.shift() ? 0
     yOffset = offsets.shift() ? 0
     @["mouseToElement#{_elFuncSuffix type}"] selectorValue, xOffset, yOffset, (error) =>
