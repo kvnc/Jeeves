@@ -1168,26 +1168,6 @@ _.each _elementFuncTypes, (type)->
           done error, displayed
 
   ###
-  #   @isCheckedByClassName = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedByCssSelector = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedById = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedByName = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedByLinkText = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedByPartialLinkText = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedByTagName = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedByXPath = (selectorValue, done) -> done(error, boolean)
-  #   @isCheckedByCss = (selectorValue, done) -> done(error, boolean)
-  ###
-  Jeeves::['isChecked' + _elFuncSuffix type] = (selectorValue, done) ->
-    logger.test "@isChecked#{_elFuncSuffix type} using selectorValue: #{selectorValue}"
-    @["getElement#{_elFuncSuffix type}"] selectorValue, (error, elem) =>
-      if error then return done error
-      logger.test 'Element found! Attempting to check if checked...'
-      @getAttributeValue elem, 'checked', (error, checked) ->
-        logger.test "isChecked result: #{!!checked}"
-        done error, !!checked
-
-  ###
   #   @isTextPresentByClassName = (selectorValue, searchText, done) -> done(error, boolean)
   #   @isTextPresentByCssSelector = (selectorValue, searchText, done) -> done(error, boolean)
   #   @isTextPresentById = (selectorValue, searchText, done) -> done(error, boolean)
