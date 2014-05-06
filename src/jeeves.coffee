@@ -27,6 +27,8 @@ module.exports = class Jeeves
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
 
   constructor: (@driver, options = {}) ->
+    webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) =>
+      @takeScreenshot subdir, filename, cb
     if options.logger?
       logger = _shimLevels options.logger
 
