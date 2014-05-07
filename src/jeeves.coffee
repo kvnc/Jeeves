@@ -729,14 +729,15 @@ module.exports = class Jeeves
     @driver
       .moveTo(startElement, undefined, undefined)
       .screenshot('clickAndStamp', "#{startElement}-before-click")
-      .buttonDown(0)
-      .buttonUp(0)
+      .click(0)
+      # .buttonDown(0)
+      # .buttonUp(0)
       # .screenshot("clickAndStamp-#{startElement}", 'after-click_before-move')
       .moveTo(endpointElement, 205, -5)
       .moveTo(endpointElement, endpointPosition.x, endpointPosition.y)
       # .screenshot("clickAndStamp-#{startElement}", 'after-move_before-stamp')
-      .buttonDown(0)
-      .buttonUp(0)
+      .click(0)
+      # .buttonDown(0)
       .screenshot('clickAndStamp', "#{startElement}-after-stamp")
       .nodeify(done) # same as: `.then( -> done() )`
 
