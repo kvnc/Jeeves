@@ -31,6 +31,8 @@ module.exports = class Jeeves
   #   @options: (optional) object of configuration settings
   ###
   constructor: (@driver, options = {}) ->
+    if not @driver? then @driver = webdriver.promiseChainRemote()
+
     webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) =>
       @takeScreenshot subdir, filename, cb
     if options.logger?
