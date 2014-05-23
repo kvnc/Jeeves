@@ -23,16 +23,55 @@ LONG_INTERVAL = 500
 module.exports = class Jeeves
 
   SPECIAL_KEYS: webdriver.SPECIAL_KEYS
-  _utils: {}
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
+  _utils:
+    enableWdLogs: ->
+      @driver.on 'status', (info) -> logger.warn "wd_status << #{info}"
 
+      @driver.on 'command', (method, callPath, data) ->
+        if not /CALL|RESPONSE/i.test method then return
+
+        # special case - don't dump whole uploaded file
+        if /\/file$/.test(callPath) and data?.file?
+          data = JSON.stringify(data.file).substr(0, 50)+'...'
+        # or screenshot :)
+        if /takeScreenshot/.test callPath
+          data = JSON.stringify(data)?.substr(0, 50)+'...'
+
+        logger.trace "wd_cmd >> #{method} #{callPath} with data: #{data || 'NO_DATA'}"
+
+
+  ###
+  #   @driver:Object (optional) -- an instance of the wd.promiseChainRemote
+  #   @options:Object (optional) -- configuration settings
+  #       screenshotDir:String -- Custom folder path where screenshots will be saved
+  #       logger:Object -- Custom logger
+  #       wdLogging:Boolean -- Flag to enable wd's native logging.
+  #       wdConfig:Object -- Options to pass along to the wd. See https://github.com/admc/wd#named-parameters
+  #       wdCapabilities:Object -- Options used to initialize the webdriver. See https://code.google.com/p/selenium/wiki/DesiredCapabilities
+  ###
   constructor: (@driver, options = {}) ->
-    webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) =>
-      @takeScreenshot subdir, filename, cb
-    if options.logger?
-      logger = _shimLevels options.logger
+    wd_config = options.wdConfig ? {}
+    @_wd_capabilites = options.wdCapabilities ? browserName:'chrome'
+
+    if not @driver? then @driver = webdriver.promiseChainRemote wd_config
+
+    if options.wdLogging then @_utils.enableWdLogs()
+
+    webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) => @takeScreenshot subdir, filename, cb
+
+    if options.logger? then logger = _shimLevels options.logger
 
     @_screenshotDir = options.screenshotDir ? "#{process.cwd()}/test-results/screenshots"
+
+  init: (done) ->
+    @driver.init @_wd_capabilites, (error, driverSessionId) =>
+      if error
+        logger.error "webdriver init error:", error.stack ? error
+        return done error
+      logger.test "webdriver created & initialized."
+      logger.warn "webdriver sessionId:", driverSessionId
+      done()
 
   ###
   #   Extension to `async.series`, run a named series flow (key:fn style)
