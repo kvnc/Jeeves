@@ -51,12 +51,11 @@ module.exports = class Jeeves
   constructor: (@driver, options = {}) ->
     if not @driver? then @driver = webdriver.promiseChainRemote()
 
-    webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) =>
-      @takeScreenshot subdir, filename, cb
-    if options.logger?
-      logger = _shimLevels options.logger
     if options.wdLogging then @_utils.enableWdLogs()
 
+    webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) => @takeScreenshot subdir, filename, cb
+
+    if options.logger? then logger = _shimLevels options.logger
 
     @_screenshotDir = options.screenshotDir ? "#{process.cwd()}/test-results/screenshots"
 
