@@ -26,6 +26,10 @@ module.exports = class Jeeves
   _utils: {}
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
 
+  ###
+  #   @driver: (optional) an instance of the wd.promiseChainRemote
+  #   @options: (optional) object of configuration settings
+  ###
   constructor: (@driver, options = {}) ->
     webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) =>
       @takeScreenshot subdir, filename, cb
