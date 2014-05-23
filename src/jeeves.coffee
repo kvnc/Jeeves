@@ -47,9 +47,14 @@ module.exports = class Jeeves
   #       screenshotDir:String -- Custom folder path where screenshots will be saved
   #       logger:Object -- Custom logger
   #       wdLogging:Boolean -- Flag to enable wd's native logging.
+  #       wdConfig:Object -- Options to pass along to the wd. See https://github.com/admc/wd#named-parameters
+  #       wdCapabilities:Object -- Options used to initialize the webdriver. See https://code.google.com/p/selenium/wiki/DesiredCapabilities
   ###
   constructor: (@driver, options = {}) ->
-    if not @driver? then @driver = webdriver.promiseChainRemote()
+    wd_config = options.wdConfig ? {}
+    @_wd_capabilites = options.wdCapabilities ? browserName:'chrome'
+
+    if not @driver? then @driver = webdriver.promiseChainRemote wd_config
 
     if options.wdLogging then @_utils.enableWdLogs()
 
