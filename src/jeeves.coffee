@@ -42,8 +42,11 @@ module.exports = class Jeeves
 
 
   ###
-  #   @driver: (optional) an instance of the wd.promiseChainRemote
-  #   @options: (optional) object of configuration settings
+  #   @driver:Object (optional) -- an instance of the wd.promiseChainRemote
+  #   @options:Object (optional) -- configuration settings
+  #       screenshotDir:String -- Custom folder path where screenshots will be saved
+  #       logger:Object -- Custom logger
+  #       wdLogging:Boolean -- Flag to enable wd's native logging.
   ###
   constructor: (@driver, options = {}) ->
     if not @driver? then @driver = webdriver.promiseChainRemote()
