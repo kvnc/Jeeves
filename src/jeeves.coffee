@@ -64,6 +64,15 @@ module.exports = class Jeeves
 
     @_screenshotDir = options.screenshotDir ? "#{process.cwd()}/test-results/screenshots"
 
+  init: (done) ->
+    @driver.init @_wd_capabilites, (error, driverSessionId) =>
+      if error
+        logger.error "webdriver init error:", error.stack ? error
+        return done error
+      logger.test "webdriver created & initialized."
+      logger.warn "webdriver sessionId:", driverSessionId
+      done()
+
   ###
   #   Extension to `async.series`, run a named series flow (key:fn style)
   #   with optional `beforeEach()` & `afterEach()` callbacks,
