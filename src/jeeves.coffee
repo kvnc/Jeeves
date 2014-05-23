@@ -23,8 +23,23 @@ LONG_INTERVAL = 500
 module.exports = class Jeeves
 
   SPECIAL_KEYS: webdriver.SPECIAL_KEYS
-  _utils: {}
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
+  _utils:
+    enableWdLogs: ->
+      @driver.on 'status', (info) -> logger.warn "wd_status << #{info}"
+
+      @driver.on 'command', (method, callPath, data) ->
+        if not /CALL|RESPONSE/i.test method then return
+
+        # special case - don't dump whole uploaded file
+        if /\/file$/.test(callPath) and data?.file?
+          data = JSON.stringify(data.file).substr(0, 50)+'...'
+        # or screenshot :)
+        if /takeScreenshot/.test callPath
+          data = JSON.stringify(data)?.substr(0, 50)+'...'
+
+        logger.trace "wd_cmd >> #{method} #{callPath} with data: #{data || 'NO_DATA'}"
+
 
   ###
   #   @driver: (optional) an instance of the wd.promiseChainRemote
@@ -37,6 +52,8 @@ module.exports = class Jeeves
       @takeScreenshot subdir, filename, cb
     if options.logger?
       logger = _shimLevels options.logger
+    if options.wdLogging then @_utils.enableWdLogs()
+
 
     @_screenshotDir = options.screenshotDir ? "#{process.cwd()}/test-results/screenshots"
 
