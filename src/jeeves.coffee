@@ -25,10 +25,10 @@ module.exports = class Jeeves
   SPECIAL_KEYS: webdriver.SPECIAL_KEYS
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
   _utils:
-    enableWdLogs: ->
-      @driver.on 'status', (info) -> logger.warn "wd_status << #{info}"
+    enableWdLogs: (driver) ->
+      driver.on 'status', (info) -> logger.warn "wd_status << #{info}"
 
-      @driver.on 'command', (method, callPath, data) ->
+      driver.on 'command', (method, callPath, data) ->
         if not /CALL|RESPONSE/i.test method then return
 
         # special case - don't dump whole uploaded file
@@ -56,7 +56,7 @@ module.exports = class Jeeves
 
     if not @driver? then @driver = webdriver.promiseChainRemote wd_config
 
-    if options.wdLogging then @_utils.enableWdLogs()
+    if options.wdLogging then @_utils.enableWdLogs @driver
 
     webdriver.addAsyncMethod 'screenshot', (subdir, filename, cb) => @takeScreenshot subdir, filename, cb
 
