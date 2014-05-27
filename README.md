@@ -8,24 +8,17 @@ Jeeves is a callback-style WebDriver abstraction built atop of [`wd`](https://gi
 npm install jeeves
 ```
 
-
-
-## Initial features (v0.0.1)
-  - Only supports using the promise chain version of `wd`
-  - Depends on:
-    + `async`
-    + `lodash`
-    + `ensureDir`
-    + `jQuery` (client-side)
-
 ## Requirements/Setup
+  - Check out our [examples](https://github.com/DocuSignDev/Jeeves/tree/master/examples) to see how you can get started.
+
   - To use screenshots, a directory should be specified in the config otherwise by default they will save to `test-results/screenshots/`
 
+  - Depends on:
+    + `jQuery` (client-side)
 
 ## Todo
-  - Need a way to accept config options
-  - add examples
-  - add more tests
+  - add more examples
+  - add tests
 
 ## Contributing
 Contributions in the form of pull requests and filing issues is welcomed & encouraged.
