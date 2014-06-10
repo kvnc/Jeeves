@@ -50,11 +50,12 @@ module.exports = class Jeeves
   #       wdConfig:Object -- Options to pass along to the wd. See https://github.com/admc/wd#named-parameters
   #       wdCapabilities:Object -- Options used to initialize the webdriver. See https://code.google.com/p/selenium/wiki/DesiredCapabilities
   ###
-  constructor: (@driver, options = {}) ->
+  constructor: (driver..., options = {}) ->
     wd_config = options.wdConfig ? {}
     @_wd_capabilites = options.wdCapabilities ? browserName:'chrome'
 
-    if not @driver? then @driver = webdriver.promiseChainRemote wd_config
+    @driver = driver.shift() ? null
+    if not @driver? then @driver = new webdriver.promiseChainRemote wd_config
 
     if options.wdLogging then @_utils.enableWdLogs @driver
 
