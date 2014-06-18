@@ -177,6 +177,38 @@ module.exports = class Jeeves
       .refresh()
       .nodeify(done)
 
+  getAllCookies: (done) ->
+    logger.test '@getAllCookies'
+    @driver
+      .allCookies()
+      .nodeify (error, cookies) ->
+        logger.test "All cookies obtained(#{error ? 'no error'}):", cookies
+        done error, cookies
+
+  setCookie: (cookie, done) ->
+    logger.test '@setCookie'
+    @driver
+      .setCookie(cookie)
+      .nodeify (error) ->
+        logger.test "Cookie set. #{error ? 'no error'}"
+        done error
+
+  deleteAllCookies: (done) ->
+    logger.test '@deleteAllCookies'
+    @driver
+      .deleteAllCookies()
+      .nodeify (error) ->
+        logger.test "All cookies deleted! #{error ? 'no error'}"
+        done error
+
+  deleteCookie: (cookieName, done) ->
+    logger.test '@deleteCookie'
+    @driver
+      .deleteCookie(cookieName)
+      .nodeify (error) ->
+        logger.test "Cookie deleted! #{error ? 'no error'}"
+        done error
+
   getPageTitle: (done) ->
     logger.test '@getPageTitle'
     @driver
