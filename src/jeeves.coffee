@@ -1586,7 +1586,6 @@ _.each _elementFuncTypes, (type)->
   #   @waitForElementTextByTagName = (selectorValue, text, options..., done) -> done(error, boolean)
   #   @waitForElementTextByXPath = (selectorValue, text, options..., done) -> done(error, boolean)
   #   @waitForElementTextByCss = (selectorValue, text, options..., done) -> done(error, boolean)
-  # @todo: refactor to use asserters.textInclude()
   ###
   Jeeves::['waitForElementText' + _elFuncSuffix type] = (selectorValue, text, options..., done) ->
     logger.test "@waitForElementText#{_elFuncSuffix type} using selectorValue: #{selectorValue}, expected text: #{text}"
@@ -1594,14 +1593,10 @@ _.each _elementFuncTypes, (type)->
     {timeout, interval} = options
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
-    @["waitForAndGetElement#{_elFuncSuffix type}"] selectorValue, {timeout, interval}, (error, elem) =>
-      if error then return done error
-      logger.test "Element found! Attempting to check text for #{text}..."
-      elem
-        .textPresent(text)
-        .nodeify (error, present) =>
-          logger.test "text present? => #{present}"
-          done error, present
+    @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.textInclude(text), timeout, interval)
+      .nodeify (error) =>
+        if not error then logger.test "Waiting complete, element text is #{text}"
+        done error
 
   ###
   #   @waitForAndGetTextByClassName = (selectorValue, options..., done) -> done(error, text)
