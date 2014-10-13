@@ -38,7 +38,7 @@ module.exports = class Jeeves
         if /takeScreenshot/.test callPath
           data = JSON.stringify(data)?.substr(0, 50)+'...'
 
-        logger.trace "wd_cmd >> #{method} #{callPath} with data: #{data || 'NO_DATA'}"
+        logger.debug "wd_cmd >> #{method} #{callPath} with data: #{data || 'NO_DATA'}"
 
 
   ###
