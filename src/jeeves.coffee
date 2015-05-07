@@ -800,7 +800,7 @@ module.exports = class Jeeves
     logger.test "@clickAndStamp ", endpointPosition
     @driver
       .moveTo(startElement, undefined, undefined)
-      .screenshot('clickAndStamp', "#{startElement}-before-click")
+      # .screenshot('clickAndStamp', "#{startElement}-before-click")
       .click(0)
       # .buttonDown(0)
       # .buttonUp(0)
@@ -810,7 +810,7 @@ module.exports = class Jeeves
       # .screenshot("clickAndStamp-#{startElement}", 'after-move_before-stamp')
       .click(0)
       # .buttonDown(0)
-      .screenshot('clickAndStamp', "#{startElement}-after-stamp")
+      # .screenshot('clickAndStamp', "#{startElement}-after-stamp")
       .nodeify(done) # same as: `.then( -> done() )`
 
   ieClickAndStamp: (startElement, endpointPosition, endpointElement, done) ->
