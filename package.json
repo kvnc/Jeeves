@@ -33,7 +33,7 @@
     "async": "^0.6.2",
     "ensureDir": "^1.0.6",
     "lodash": "^2.4.1",
-    "wd": "^0.2.21"
+    "wd": "0.2.x"
   },
   "devDependencies": {
     "coffee-script": "^1.7.1",
