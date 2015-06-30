@@ -13,8 +13,8 @@ _ = require 'lodash'
 # in ms
 SHORT_TIMEOUT = 8000
 LONG_TIMEOUT = 16000
-SHORT_INTERVAL = 200
-LONG_INTERVAL = 500
+SHORT_INTERVAL = SHORT_TIMEOUT / 30
+LONG_INTERVAL = LONG_TIMEOUT / 30
 
 # @todo: need clean way to choose either
 #        CB-style, promise, or promise-chain depending which `wd` is used
@@ -70,6 +70,8 @@ module.exports = class Jeeves
 
     SHORT_TIMEOUT = options.shortTimeout ? SHORT_TIMEOUT
     LONG_TIMEOUT = options.longTimeout ? LONG_TIMEOUT
+    SHORT_INTERVAL = SHORT_TIMEOUT / 30
+    LONG_INTERVAL = LONG_TIMEOUT / 30
     return
 
   init: (done) ->
