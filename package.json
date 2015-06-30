@@ -8,6 +8,11 @@
     "prepublish": "coffee --compile --output lib/ src/",
     "test": "./node_modules/.bin/mocha"
   },
+  "files": [
+    "index.js",
+    "src",
+    "lib"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/DocuSignDev/jeeves"
