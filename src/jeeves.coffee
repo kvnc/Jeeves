@@ -40,15 +40,16 @@ module.exports = class Jeeves
 
         logger.debug "wd_cmd >> #{method} #{callPath} with data: #{data || 'NO_DATA'}"
 
-
-  ###
-  #   @driver:Object (optional) -- an instance of the wd.promiseChainRemote
-  #   @options:Object (optional) -- configuration settings
-  #       screenshotDir:String -- Custom folder path where screenshots will be saved
-  #       logger:Object -- Custom logger
-  #       wdLogging:Boolean -- Flag to enable wd's native logging.
-  #       wdConfig:Object -- Options to pass along to the wd. See https://github.com/admc/wd#named-parameters
-  #       wdCapabilities:Object -- Options used to initialize the webdriver. See https://code.google.com/p/selenium/wiki/DesiredCapabilities
+  ###*
+   * @param  {Object}  driver                 an instance of the wd.promiseChainRemote
+   * @param  {Object}  options                configuration settings
+   * @param  {String}  options.screenshotDir  Custom folder path where screenshots will be saved
+   * @param  {Object}  options.logger         Custom logger
+   * @param  {Boolean} options.wdLogging      Flag to enable wd's native logging.
+   * @param  {Object}  options.wdConfig       Options to pass along to the wd. See https://github.com/admc/wd#named-parameters
+   * @param  {Object}  options.wdCapabilities Options used to initialize the webdriver.
+   *                                            See https://code.google.com/p/selenium/wiki/DesiredCapabilities
+   * @return {undefined}
   ###
   constructor: (driver..., options = {}) ->
     wd_config = options.wdConfig ? {}
