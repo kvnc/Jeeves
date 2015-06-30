@@ -1195,7 +1195,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .isSelected()
         .nodeify (error, selected) ->
-          logger.test "isSelected result: #{selected}"
+          if not error
+            logger.test("isSelected result: #{selected}")
           done error, selected
 
   ###
@@ -1217,7 +1218,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .isEnabled()
         .nodeify (error, enabled) ->
-          logger.test "isEnabled result: #{enabled}"
+          if not error
+            logger.test("isEnabled result: #{enabled}")
           done error, enabled
 
   ###
@@ -1243,7 +1245,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .isDisplayed()
         .nodeify (error, displayed) ->
-          logger.test "isDisplayed result: #{displayed}"
+          if not error
+            logger.test("isDisplayed result: #{displayed}")
           done error, displayed
 
   ###
@@ -1265,7 +1268,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .textPresent(searchText)
         .nodeify (error, textFound) ->
-          logger.test "Text found: #{textFound}"
+          if not error
+            logger.test("Text found: #{textFound}")
           done error, textFound
 
   ###
@@ -1341,7 +1345,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .getAttribute(attrName)
         .nodeify (error, attrVal) ->
-          logger.test "got attribute value: #{attrVal}"
+          if not error
+            logger.test "got attribute value: #{attrVal}"
           done error, attrVal
 
   ###
@@ -1363,7 +1368,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .getComputedCss(cssProp)
         .nodeify (error, cssPropVal) ->
-          logger.test "got computed css property: #{cssPropVal}"
+          if not error
+            logger.test("got computed css property: #{cssPropVal}")
           done error, cssPropVal
 
   ###
@@ -1385,7 +1391,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .getSize()
         .nodeify (error, elemSize) ->
-          logger.test "got elem size: #{elemSize}"
+          if not error
+            logger.test("got elem size: #{elemSize}")
           done error, elemSize
 
   ###
@@ -1407,7 +1414,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .getLocation()
         .nodeify (error, elemLoc) ->
-          logger.test "got elem location: ", elemLoc
+          if not error
+            logger.test('got elem location: ', elemLoc)
           done error, elemLoc
 
   ###
@@ -1429,7 +1437,8 @@ _.each _elementFuncTypes, (type)->
       elem
         .getLocationInView()
         .nodeify (error, elemLoc) ->
-          logger.test "got elem location in view: ", elemLoc
+          if not error
+            logger.test('got elem location in view: ', elemLoc)
           done error, elemLoc
 
   #####################################
@@ -1460,7 +1469,8 @@ _.each _elementFuncTypes, (type)->
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, SHORT_INTERVAL)
       .nodeify (error) ->
-        logger.test 'Waiting complete! Element exists on page'
+        if not error
+          logger.test('Waiting complete! Element exists on page')
         done error
 
   ###
@@ -1482,7 +1492,8 @@ _.each _elementFuncTypes, (type)->
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.isDisplayed, timeout, interval)
       .nodeify (error) ->
-        logger.test 'Waiting complete! Element is visible'
+        if not error
+          logger.test('Waiting complete! Element is visible')
         done error
 
   ###
@@ -1504,7 +1515,8 @@ _.each _elementFuncTypes, (type)->
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.isNotDisplayed, timeout, interval)
       .nodeify (error) ->
-        logger.test 'Waiting complete! Element is hidden'
+        if not error
+          logger.test('Waiting complete! Element is hidden')
         done error
 
   ###
@@ -1528,7 +1540,8 @@ _.each _elementFuncTypes, (type)->
     else waitForMethod = "waitForElement#{_elFuncSuffix type}"
     @[waitForMethod] selectorValue, {timeout, interval}, (error) =>
       if error then return done error
-      logger.test 'Waiting complete! Attempting to get & return element...'
+      if not error
+        logger.test('Waiting complete! Attempting to get & return element...')
       @["getElement#{_elFuncSuffix type}"] selectorValue, done
 
   ###
@@ -1551,7 +1564,8 @@ _.each _elementFuncTypes, (type)->
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, timeout, interval)
       .nodeify (error) =>
         if error then return done error
-        logger.test 'Waiting complete! Attempting to get & return element...'
+        if not error
+          logger.test('Waiting complete! Attempting to get & return element...')
         @["getElements#{_elFuncSuffix type}"] selectorValue, done
 
   ###
@@ -1572,8 +1586,9 @@ _.each _elementFuncTypes, (type)->
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.nonEmptyText, timeout, interval)
-      .nodeify (error) =>
-        logger.test 'Waiting complete, element text is not empty.'
+      .nodeify (error) ->
+        if not error
+          logger.test('Waiting complete, element text is not empty.')
         done error
 
   ###
@@ -1594,8 +1609,9 @@ _.each _elementFuncTypes, (type)->
     timeout = timeout ? SHORT_TIMEOUT
     interval = interval ? SHORT_INTERVAL
     @driver["waitForElement#{_elFuncSuffix type}"](selectorValue, asserters.textInclude(text), timeout, interval)
-      .nodeify (error) =>
-        if not error then logger.test "Waiting complete, element text is #{text}"
+      .nodeify (error) ->
+        if not error
+          logger.test("Waiting complete, element text is #{text}")
         done error
 
   ###
