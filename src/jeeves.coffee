@@ -49,6 +49,8 @@ module.exports = class Jeeves
    * @param  {Object}  options.wdConfig       Options to pass along to the wd. See https://github.com/admc/wd#named-parameters
    * @param  {Object}  options.wdCapabilities Options used to initialize the webdriver.
    *                                            See https://code.google.com/p/selenium/wiki/DesiredCapabilities
+   * @param  {Number} options.shortTimeout   Override in milliseconds of the default short timeout
+   * @param  {Number} options.longTimeout    Override in milliseconds of the default long timeout
    * @return {undefined}
   ###
   constructor: (driver..., options = {}) ->
@@ -65,6 +67,10 @@ module.exports = class Jeeves
     if options.logger? then logger = _shimLevels options.logger
 
     @_screenshotDir = options.screenshotDir ? "#{process.cwd()}/test-results/screenshots"
+
+    SHORT_TIMEOUT = options.shortTimeout ? SHORT_TIMEOUT
+    LONG_TIMEOUT = options.longTimeout ? LONG_TIMEOUT
+    return
 
   init: (done) ->
     @driver.init @_wd_capabilites, (error, driverSessionId) =>
