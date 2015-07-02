@@ -37,8 +37,10 @@
   "dependencies": {
     "async": "0.9.x",
     "ensureDir": "1.0.6",
-    "lodash": "^2.4.1",
-    "wd": "0.2.x"
+    "lodash": "^2.4.1"
+  },
+  "peerDependencies": {
+    "wd": "*"
   },
   "devDependencies": {
     "coffee-script": "^1.7.1",
