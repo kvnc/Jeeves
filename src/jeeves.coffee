@@ -26,7 +26,7 @@ module.exports = class Jeeves
   MOUSE_KEYS: 'left': 0, 'middle': 1, 'right': 2
   _utils:
     enableWdLogs: (driver) ->
-      driver.on 'status', (info) -> logger.warn "wd_status << #{info}"
+      driver.on 'status', (info) -> logger.test "wd_status << #{info}"
 
       driver.on 'command', (method, callPath, data) ->
         if not /CALL|RESPONSE/i.test method then return
